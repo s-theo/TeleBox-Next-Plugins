@@ -1,0 +1,22 @@
+{
+  "aix": {
+    "url": "https://github.com/s-theo/TeleBox-Plugins/blob/next/aix/aix.ts?raw=true",
+    "desc": "AI 助手，支持问答、搜索、图片、视频和 Telegraph"
+  },
+  "dme": {
+    "url": "https://github.com/s-theo/TeleBox-Plugins/blob/next/dme/dme.ts?raw=true",
+    "desc": "带防撤回媒体替换的个人消息删除工具"
+  },
+  "sink": {
+    "url": "https://github.com/s-theo/TeleBox-Plugins/blob/next/sink/sink.ts?raw=true",
+    "desc": "Sink 短链管理"
+  },
+  "t": {
+    "url": "https://github.com/s-theo/TeleBox-Plugins/blob/next/t/t.ts?raw=true",
+    "desc": "基于 edge-tts 和 ffmpeg 的文字转语音"
+  },
+  "yvlu": {
+    "url": "https://github.com/s-theo/TeleBox-Plugins/blob/next/yvlu/yvlu.ts?raw=true",
+    "desc": "语录贴纸生成与个人贴纸包管理"
+  }
+}
