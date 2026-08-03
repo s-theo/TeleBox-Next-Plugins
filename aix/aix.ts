@@ -4,19 +4,33 @@ import http from 'node:http'
 import https from 'node:https'
 import * as path from 'node:path'
 import { promisify } from 'node:util'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { MessageContext } from '@mtcute/dispatcher'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { thtml as html, type InputMediaLike, type Message, type MessageMedia, type TelegramClient, type Thumbnail } from '@mtcute/node'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { createDirectoryInAssets } from '@utils/pathHelpers'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { Plugin } from '@utils/pluginBase'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getPrefixes } from '@utils/pluginManager'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { tryGetCurrentRuntime } from '@utils/runtimeAccess'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getGlobalClient } from '@utils/runtimeManager'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { safeGetReplyMessage } from '@utils/safeGetMessages'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { TelegramFormatter } from '@utils/telegramFormatter'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { TelegraphFormatter } from '@utils/telegraphFormatter'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import type { Low } from 'lowdb'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { JSONFilePreset } from 'lowdb/node'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import sharp from 'sharp'
 
 interface ProviderConfig {

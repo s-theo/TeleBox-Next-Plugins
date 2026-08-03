@@ -2,10 +2,15 @@ import { execFile } from 'node:child_process'
 import * as fs from 'node:fs/promises'
 import path from 'node:path'
 import { promisify } from 'node:util'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import type { MessageContext } from '@mtcute/dispatcher'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { createDirectoryInAssets } from '@utils/pathHelpers'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { Plugin } from '@utils/pluginBase'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getPrefixes } from '@utils/pluginManager'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getGlobalClient } from '@utils/runtimeManager'
 
 const execFileAsync = promisify(execFile)

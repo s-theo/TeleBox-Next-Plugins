@@ -1,13 +1,23 @@
 import * as path from 'node:path'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import type { MessageContext } from '@mtcute/dispatcher'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { thtml as html } from '@mtcute/node'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { htmlEscape } from '@utils/htmlEscape'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { createDirectoryInAssets } from '@utils/pathHelpers'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { Plugin } from '@utils/pluginBase'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getPrefixes } from '@utils/pluginManager'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { safeGetReplyMessage } from '@utils/safeGetMessages'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import axios, { type AxiosError, type AxiosInstance } from 'axios'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import type { Low } from 'lowdb'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { JSONFilePreset } from 'lowdb/node'
 
 interface SinkConfig {

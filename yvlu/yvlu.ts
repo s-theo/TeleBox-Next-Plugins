@@ -8,16 +8,27 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { promisify } from 'node:util'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import type { MessageContext } from '@mtcute/dispatcher'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { thtml as html, type Message, type MessageEntity, type Peer, type PeerSender, type TelegramClient } from '@mtcute/node'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getErrorMessage } from '@utils/errorHelpers'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { htmlEscape } from '@utils/htmlEscape'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { createDirectoryInAssets } from '@utils/pathHelpers'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { Plugin, type PluginRuntimeContext } from '@utils/pluginBase'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getPrefixes } from '@utils/pluginManager'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { getGlobalClient } from '@utils/runtimeManager'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import { safeGetMessages, safeGetReplyMessage } from '@utils/safeGetMessages'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import axios from 'axios'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import sharp from 'sharp'
 
 const execFileAsync = promisify(execFile)

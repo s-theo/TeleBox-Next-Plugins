@@ -11,6 +11,9 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.6
         version: 2.5.6
+      '@types/node':
+        specifier: ^24.13.3
+        version: 24.13.3
 
 packages:
 
@@ -71,6 +74,12 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@types/node@24.13.3':
+    resolution: {integrity: sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==}
+
+  undici-types@7.18.2:
+    resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
+
 snapshots:
 
   '@biomejs/biome@2.5.6':
@@ -107,3 +116,9 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.5.6':
     optional: true
+
+  '@types/node@24.13.3':
+    dependencies:
+      undici-types: 7.18.2
+
+  undici-types@7.18.2: {}
