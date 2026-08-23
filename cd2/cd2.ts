@@ -1832,8 +1832,9 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'rm') {
-      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} rm /路径 confirm`)
-      const result = await this.getClient().unary('DeleteFile', { path: normalizePath(args[1]) })
+      if (args.length < 3 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} rm /路径 confirm`)
+      const targetPath = args.slice(1, -1).join(' ')
+      const result = await this.getClient().unary('DeleteFile', { path: normalizePath(targetPath) })
       if (result.success === false) throw new Error(result.errorMessage || '删除失败')
       await msg.edit({ text: '✅ 已删除' })
       return
