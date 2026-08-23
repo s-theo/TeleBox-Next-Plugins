@@ -1473,7 +1473,13 @@ class Cd2Plugin extends Plugin {
     await client.editMessage({
       chatId: msg.chat.id,
       message: msg.id,
-      media: { type: 'document', file: downloaded.body, fileName: fallbackName, fileMime: downloaded.contentType }
+      media: {
+        type: 'document',
+        file: downloaded.body,
+        fileName: fallbackName,
+        fileMime: downloaded.contentType,
+        caption: htmlText(`✅ 下载完成：<code>${htmlEscape(fallbackName)}</code>`)
+      }
     })
   }
 
