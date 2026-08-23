@@ -76,9 +76,9 @@ const helpText = `
 • <code>${commandName} rename /文件 新名称</code> 重命名
 • <code>${commandName} mv /源路径 /目标目录</code> 移动
 • <code>${commandName} cp /源路径 /目标目录</code> 复制
-• <code>${commandName} rm /路径 confirm</code> 删除
+• <code>${commandName} del /路径 confirm</code> 删除
 • <code>${commandName} space [路径]</code> 空间信息
-• <code>${commandName} download /路径/文件</code> 下载并发送到 Telegram
+• <code>${commandName} dl /路径/文件</code> 下载并发送到 Telegram
 
 <b>3. 挂载点管理</b>
 • <code>${commandName} mount list</code> 查看挂载点
@@ -1880,8 +1880,8 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 文件夹已创建' })
       return
     }
-    if (action === 'rm') {
-      if (args.length < 3 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} rm /路径 confirm`)
+    if (action === 'rm' || action === 'del') {
+      if (args.length < 3 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} del /路径 confirm`)
       const targetPath = args.slice(1, -1).join(' ')
       const result = await this.getClient().unary('DeleteFile', { path: normalizePath(targetPath) })
       if (result.success === false) throw new Error(result.errorMessage || '删除失败')
@@ -1949,14 +1949,14 @@ class Cd2Plugin extends Plugin {
           await this.handleBackup(msg, args.slice(1))
         } else if (subcommand === 'remote') {
           await this.handleRemote(msg, args.slice(1))
-        } else if (subcommand === 'download') {
-          if (!args[1]) throw new Error(`用法：${commandName} download /路径/文件`)
+        } else if (subcommand === 'download' || subcommand === 'dl') {
+          if (!args[1]) throw new Error(`用法：${commandName} dl /路径/文件`)
           await this.handleDownload(msg, args.slice(1).join(' '))
         } else if (subcommand === 'dav') {
           await this.handleDav(msg, args.slice(1))
         } else if (subcommand === 'upload') {
           await this.handleUpload(msg, args.slice(1))
-        } else if (['mkdir', 'rm', 'mv', 'cp', 'rename'].includes(subcommand)) {
+        } else if (['mkdir', 'rm', 'del', 'mv', 'cp', 'rename'].includes(subcommand)) {
           await this.handleMutation(msg, args)
         } else {
           throw new Error(`未知命令，使用 ${commandName} help 查看帮助`)

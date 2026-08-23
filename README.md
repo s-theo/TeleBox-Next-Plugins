@@ -67,7 +67,7 @@ WebDAV management and Telegram upload:
 
 Reply to a Telegram file before sending `.cd2 upload [目标目录]`; the file is downloaded through the host Telegram client and uploaded with WebDAV `PUT`. The target argument is always treated as a directory, so both `.cd2 upload /GoogleDrive` and `.cd2 upload /GoogleDrive/` are valid. If Telegram does not provide a filename, the plugin adds an extension from the media type, such as `.jpg` for a photo.
 
-Use `.cd2 download /路径/文件` to download a file from CloudDrive2 and send it to the current Telegram chat. Paths containing spaces are supported without quoting.
+Use `.cd2 dl /路径/文件` to download a file from CloudDrive2 and send it to the current Telegram chat. Paths containing spaces are supported without quoting. The old `.cd2 download` and `.cd2 rm` aliases remain compatible.
 
 ## Development
 
