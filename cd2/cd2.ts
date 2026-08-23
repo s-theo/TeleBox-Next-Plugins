@@ -78,7 +78,6 @@ const helpText = `
 • <code>${commandName} cp /源路径 /目标目录</code> 复制
 • <code>${commandName} rm /路径 confirm</code> 删除
 • <code>${commandName} space [路径]</code> 空间信息
-• <code>${commandName} url /路径/文件</code> 下载链接
 • <code>${commandName} download /路径/文件</code> 下载并发送到 Telegram
 
 <b>3. 挂载点管理</b>
@@ -1460,21 +1459,19 @@ class Cd2Plugin extends Plugin {
     await msg.edit({ text: htmlText(['<b>☁️ Cloud API 管理</b>', `<b>数量：</b> ${clouds.length}`, '', ...lines, '', `配置：<code>${commandName} cloud config get CLOUD USER</code>`, `删除：<code>${commandName} cloud remove CLOUD USER confirm</code>`].join('\n')) })
   }
 
-  private async handleDownloadUrl(msg: MessageContext, inputPath: string): Promise<void> {
-    const targetPath = normalizePath(inputPath)
-    const result = await this.getClient().unary('GetDownloadUrlPath', { path: targetPath, preview: false, lazyRead: true, getDirectUrl: true })
-    const url = result.directUrl || result.downloadUrlPath
-    if (!url) throw new Error('CD2 没有返回下载地址')
-    await msg.edit({ text: htmlText(['<b>🔗 下载地址</b>', `<b>文件：</b> <code>${htmlEscape(targetPath)}</code>`, `<a href="${htmlEscape(url)}">点击下载</a>`, `<code>${htmlEscape(url)}</code>`].join('\n')), disableWebPreview: true })
-  }
-
   private async handleDownload(msg: MessageContext, inputPath: string): Promise<void> {
     const config = await this.getConfig()
     const targetPath = normalizePath(inputPath)
     const result = await this.getClient().unary('GetDownloadUrlPath', { path: targetPath, preview: false, lazyRead: true, getDirectUrl: true })
-    const rawUrl = result.directUrl || result.downloadUrlPath
+    const endpoint = new URL(config.endpoint)
+    const directUrl = typeof result.directUrl === 'string' && !/[{}]/.test(result.directUrl) ? result.directUrl : ''
+    const templateUrl = String(result.downloadUrlPath || '')
+      .replaceAll('{SCHEME}', endpoint.protocol.replace(':', ''))
+      .replaceAll('{HOST}', endpoint.host)
+      .replaceAll('{PREVIEW}', 'false')
+    const rawUrl = directUrl || templateUrl
     if (!rawUrl) throw new Error('CD2 没有返回下载地址')
-    const url = new URL(rawUrl, config.endpoint).toString()
+    const url = new URL(rawUrl, endpoint).toString()
     const fallbackName = decodeURIComponent(targetPath.split('/').filter(Boolean).at(-1) || `clouddrive-${Date.now()}`)
     await msg.edit({ text: htmlText(`🔄 正在下载 <code>${htmlEscape(targetPath)}</code>…`) })
     const downloaded = await downloadHttpBuffer(url, result.userAgent)
@@ -1952,9 +1949,6 @@ class Cd2Plugin extends Plugin {
           await this.handleBackup(msg, args.slice(1))
         } else if (subcommand === 'remote') {
           await this.handleRemote(msg, args.slice(1))
-        } else if (subcommand === 'url') {
-          if (!args[1]) throw new Error(`用法：${commandName} url /路径/文件`)
-          await this.handleDownloadUrl(msg, args.slice(1).join(' '))
         } else if (subcommand === 'download') {
           if (!args[1]) throw new Error(`用法：${commandName} download /路径/文件`)
           await this.handleDownload(msg, args.slice(1).join(' '))
