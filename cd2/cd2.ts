@@ -79,6 +79,7 @@ const helpText = `
 • <code>${commandName} rm /路径 confirm</code> 删除
 • <code>${commandName} space [路径]</code> 空间信息
 • <code>${commandName} url /路径/文件</code> 下载链接
+• <code>${commandName} download /路径/文件</code> 下载并发送到 Telegram
 
 <b>3. 挂载点管理</b>
 • <code>${commandName} mount list</code> 查看挂载点
@@ -229,6 +230,42 @@ const davRequest = (config: Cd2Config, method: string, remotePath: string, body?
     request.on('error', reject)
     if (body) request.write(body)
     request.end()
+  })
+}
+
+const downloadHttpBuffer = (rawUrl: string, userAgent?: string, redirects = 0): Promise<{ body: Buffer; contentType: string }> => {
+  if (redirects > 5) return Promise.reject(new Error('下载地址重定向次数过多'))
+  const target = new URL(rawUrl)
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') return Promise.reject(new Error('CD2 下载地址协议不受支持'))
+  const transport = target.protocol === 'https:' ? https : http
+  return new Promise((resolve, reject) => {
+    const request = transport.get(target, { headers: userAgent ? { 'User-Agent': userAgent } : undefined }, (response) => {
+      const location = response.headers.location
+      if (location && response.statusCode && response.statusCode >= 300 && response.statusCode < 400) {
+        response.resume()
+        downloadHttpBuffer(new URL(location, target).toString(), userAgent, redirects + 1).then(resolve, reject)
+        return
+      }
+      const chunks: Buffer[] = []
+      let total = 0
+      response.on('data', (chunk: Buffer) => {
+        total += chunk.length
+        if (total > 128 * 1024 * 1024) {
+          request.destroy(new Error('单个下载文件不能超过 128 MiB'))
+          return
+        }
+        chunks.push(chunk)
+      })
+      response.on('end', () => {
+        if ((response.statusCode || 0) >= 400) {
+          reject(new Error(`CD2 下载失败：HTTP ${response.statusCode || 0}`))
+          return
+        }
+        resolve({ body: Buffer.concat(chunks), contentType: String(response.headers['content-type'] || 'application/octet-stream').split(';', 1)[0] })
+      })
+    })
+    request.setTimeout(120_000, () => request.destroy(new Error('CD2 下载超时')))
+    request.on('error', reject)
   })
 }
 
@@ -1431,6 +1468,21 @@ class Cd2Plugin extends Plugin {
     await msg.edit({ text: htmlText(['<b>🔗 下载地址</b>', `<b>文件：</b> <code>${htmlEscape(targetPath)}</code>`, `<a href="${htmlEscape(url)}">点击下载</a>`, `<code>${htmlEscape(url)}</code>`].join('\n')), disableWebPreview: true })
   }
 
+  private async handleDownload(msg: MessageContext, inputPath: string): Promise<void> {
+    const config = await this.getConfig()
+    const targetPath = normalizePath(inputPath)
+    const result = await this.getClient().unary('GetDownloadUrlPath', { path: targetPath, preview: false, lazyRead: true, getDirectUrl: true })
+    const rawUrl = result.directUrl || result.downloadUrlPath
+    if (!rawUrl) throw new Error('CD2 没有返回下载地址')
+    const url = new URL(rawUrl, config.endpoint).toString()
+    const fallbackName = decodeURIComponent(targetPath.split('/').filter(Boolean).at(-1) || `clouddrive-${Date.now()}`)
+    await msg.edit({ text: htmlText(`🔄 正在下载 <code>${htmlEscape(targetPath)}</code>…`) })
+    const downloaded = await downloadHttpBuffer(url, result.userAgent)
+    const client = await getGlobalClient()
+    await client.sendMedia(msg.chat.id, { type: 'document', file: downloaded.body, fileName: fallbackName, fileMime: downloaded.contentType }, { replyTo: msg.id })
+    await msg.edit({ text: htmlText(`✅ 已从 CloudDrive2 下载并发送：<code>${htmlEscape(fallbackName)}</code>`) })
+  }
+
   private async handleMount(msg: MessageContext, args: string[]): Promise<void> {
     const action = args[0]?.toLowerCase() || 'list'
     if (action === 'can-add') {
@@ -1900,9 +1952,12 @@ class Cd2Plugin extends Plugin {
           await this.handleBackup(msg, args.slice(1))
         } else if (subcommand === 'remote') {
           await this.handleRemote(msg, args.slice(1))
-        } else if (subcommand === 'url' || subcommand === 'download') {
+        } else if (subcommand === 'url') {
           if (!args[1]) throw new Error(`用法：${commandName} url /路径/文件`)
-          await this.handleDownloadUrl(msg, args[1])
+          await this.handleDownloadUrl(msg, args.slice(1).join(' '))
+        } else if (subcommand === 'download') {
+          if (!args[1]) throw new Error(`用法：${commandName} download /路径/文件`)
+          await this.handleDownload(msg, args.slice(1).join(' '))
         } else if (subcommand === 'dav') {
           await this.handleDav(msg, args.slice(1))
         } else if (subcommand === 'upload') {
