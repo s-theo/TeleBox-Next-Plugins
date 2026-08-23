@@ -17,6 +17,8 @@ import { getPrefixes } from '@utils/pluginManager'
 // @ts-expect-error -- provided by the TeleBox-Next host
 import { getGlobalClient } from '@utils/runtimeManager'
 // @ts-expect-error -- provided by the TeleBox-Next host
+import { safeGetReplyMessage } from '@utils/safeGetMessages'
+// @ts-expect-error -- provided by the TeleBox-Next host
 import type { Low } from 'lowdb'
 // @ts-expect-error -- provided by the TeleBox-Next host
 import { JSONFilePreset } from 'lowdb/node'
@@ -1781,10 +1783,13 @@ class Cd2Plugin extends Plugin {
 
   private async handleUpload(msg: MessageContext, args: string[]): Promise<void> {
     const config = await this.getConfig()
-    const replied = msg.replyToMessage
-    const media = replied?.media as { fileName?: string; mimeType?: string } | undefined
-    if (!replied || !media) throw new Error(`请回复 Telegram 文件后使用 ${commandName} upload [远程路径]`)
-    const telegram = getGlobalClient() as { downloadAsBuffer: (media: unknown) => Promise<Buffer> }
+    const replied = await safeGetReplyMessage(msg)
+    const media = replied?.media as { type?: string; fileName?: string; mimeType?: string } | undefined
+    const supportedTypes = new Set(['photo', 'document', 'video', 'audio', 'voice', 'sticker'])
+    if (!replied || !media || !supportedTypes.has(media.type || '')) {
+      throw new Error(`请回复 Telegram 图片、视频或文件后使用 ${commandName} upload [远程路径]`)
+    }
+    const telegram = (await getGlobalClient()) as { downloadAsBuffer: (media: unknown) => Promise<Buffer> }
     await msg.edit({ text: '🔄 正在下载 Telegram 文件…' })
     const data = Buffer.from(await telegram.downloadAsBuffer(media))
     if (data.length > 128 * 1024 * 1024) throw new Error('单个上传文件不能超过 128 MiB')
