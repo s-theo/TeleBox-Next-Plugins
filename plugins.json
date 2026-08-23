@@ -7,6 +7,10 @@
     "url": "https://github.com/s-theo/TeleBox-Next-Plugins/blob/main/dme/dme.ts?raw=true",
     "desc": "带防撤回媒体替换的个人消息删除工具"
   },
+  "cd2": {
+    "url": "https://github.com/s-theo/TeleBox-Next-Plugins/blob/main/cd2/cd2.ts?raw=true",
+    "desc": "CloudDrive2 主要功能管理：账户/Token、文件与挂载点、上传下载任务、云 API 登录/配置/删除、基础备份、WebDAV 双认证、离线远程上传、下载链接和 Telegram 文件上传"
+  },
   "save_sticker": {
     "url": "https://github.com/s-theo/TeleBox-Next-Plugins/blob/main/save_sticker/save_sticker.ts?raw=true",
     "desc": "保存贴纸和图片到个人贴纸包，支持批量收集"
