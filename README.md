@@ -65,7 +65,7 @@ WebDAV management and Telegram upload:
 
 `.cd2 login` 配置的 CloudDrive 账户可以直接用于 WebDAV；`.cd2 dav account on` 启用账户模式。`.cd2 dav add` 仍然可以添加独立的 WebDAV 用户，两种模式可以同时使用。`.cd2 dav status` 会分别显示账户模式和独立用户；消息使用真实换行显示。
 
-Reply to a Telegram file before sending `.cd2 upload`; the file is downloaded through the host Telegram client and uploaded with WebDAV `PUT`.
+Reply to a Telegram file before sending `.cd2 upload [目标目录]`; the file is downloaded through the host Telegram client and uploaded with WebDAV `PUT`. The target argument is always treated as a directory, so both `.cd2 upload /GoogleDrive` and `.cd2 upload /GoogleDrive/` are valid. If Telegram does not provide a filename, the plugin adds an extension from the media type, such as `.jpg` for a photo.
 
 ## Development
 

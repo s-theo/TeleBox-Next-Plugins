@@ -133,7 +133,7 @@ const helpText = `
 • <code>${commandName} remote list [路径]</code>
 • <code>${commandName} remote list-all CLOUD ACCOUNT [页码]</code>
 • <code>${commandName} remote remove CLOUD ACCOUNT confirm HASH...</code>
-• 回复 Telegram 文件后：<code>${commandName} upload [WebDAV路径]</code>
+• 回复 Telegram 文件后：<code>${commandName} upload [目标目录]</code>
 
 <b>基础配置</b>
 • <code>${commandName} config endpoint http://host:19798</code>
@@ -298,6 +298,27 @@ const formatBytes = (value: string | number | undefined): string => {
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`
   if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`
   return `${(bytes / 1024 ** 3).toFixed(2)} GiB`
+}
+
+const getMediaExtension = (media: { type?: string; mimeType?: string }): string => {
+  const mimeType = (media.mimeType || (media.type === 'photo' ? 'image/jpeg' : '')).toLowerCase().split(';', 1)[0]
+  const knownExtensions: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'audio/mpeg': 'mp3',
+    'audio/ogg': 'ogg',
+    'audio/wav': 'wav'
+  }
+  if (knownExtensions[mimeType]) return knownExtensions[mimeType]
+  const subtype = mimeType.split('/')[1]?.replace(/[^a-z0-9]+/g, '')
+  if (subtype && subtype !== 'octetstream') return subtype
+  if (media.type === 'sticker') return 'webp'
+  if (media.type === 'voice') return 'ogg'
+  return 'bin'
 }
 
 const formatFile = (file: Cd2File, index: number): string => {
@@ -1793,9 +1814,9 @@ class Cd2Plugin extends Plugin {
     await msg.edit({ text: '🔄 正在下载 Telegram 文件…' })
     const data = Buffer.from(await telegram.downloadAsBuffer(media))
     if (data.length > 128 * 1024 * 1024) throw new Error('单个上传文件不能超过 128 MiB')
-    const fileName = media.fileName || `telegram-${replied.id || Date.now()}`
-    const requestedPath = args[0] ? normalizePath(args[0]) : `${config.webdavRoot}/${fileName}`
-    const remotePath = args[0]?.endsWith('/') ? `${requestedPath}/${fileName}` : requestedPath
+    const fileName = media.fileName || `telegram-${replied.id || Date.now()}.${getMediaExtension(media)}`
+    const requestedPath = args[0] ? normalizePath(args[0]) : normalizePath(config.webdavRoot)
+    const remotePath = `${requestedPath === '/' ? '' : requestedPath}/${fileName}`
     await msg.edit({ text: `🔄 正在上传 <code>${htmlEscape(remotePath)}</code>（${formatBytes(data.length)}）…` })
     await davRequest(config, 'PUT', remotePath, data, { 'Content-Type': media.mimeType || 'application/octet-stream' })
     await msg.edit({ text: htmlText(`✅ 已上传到 WebDAV：<code>${htmlEscape(remotePath)}</code>`) })
