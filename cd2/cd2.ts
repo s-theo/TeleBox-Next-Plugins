@@ -1470,8 +1470,11 @@ class Cd2Plugin extends Plugin {
     await msg.edit({ text: htmlText(`🔄 正在下载 <code>${htmlEscape(targetPath)}</code>…`) })
     const downloaded = await downloadHttpBuffer(url, result.userAgent)
     const client = await getGlobalClient()
-    await client.sendMedia(msg.chat.id, { type: 'document', file: downloaded.body, fileName: fallbackName, fileMime: downloaded.contentType }, { replyTo: msg.id })
-    await msg.edit({ text: htmlText(`✅ 已从 CloudDrive2 下载并发送：<code>${htmlEscape(fallbackName)}</code>`) })
+    await client.editMessage({
+      chatId: msg.chat.id,
+      message: msg.id,
+      media: { type: 'document', file: downloaded.body, fileName: fallbackName, fileMime: downloaded.contentType }
+    })
   }
 
   private async handleMount(msg: MessageContext, args: string[]): Promise<void> {
