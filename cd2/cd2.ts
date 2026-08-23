@@ -64,79 +64,79 @@ const helpText = `
 <b>☁️ CloudDrive2 全功能管理</b>
 
 <b>1. 公共方法</b>
-• <code>${commandName} st</code> 服务、登录和运行状态
-• <code>${commandName} vf</code> 验证连接
-• <code>${commandName} ac status|logout</code> 账户状态/退出
+• <code>${commandName} status</code> 服务、登录和运行状态
+• <code>${commandName} check</code> 验证连接
+• <code>${commandName} account status|logout</code> 账户状态/退出
 
 <b>2. 文件操作</b>
 • <code>${commandName} ls [路径]</code> 浏览目录
-• <code>${commandName} fi /路径/文件</code> 查询文件
-• <code>${commandName} sea 关键词 [路径]</code> 搜索文件
-• <code>${commandName} mk /父目录 文件夹名</code> 创建目录
-• <code>${commandName} rn /文件 新名称</code> 重命名
+• <code>${commandName} find /路径/文件</code> 查询文件
+• <code>${commandName} grep 关键词 [路径]</code> 搜索文件
+• <code>${commandName} mkdir /父目录 文件夹名</code> 创建目录
+• <code>${commandName} rename /文件 新名称</code> 重命名
 • <code>${commandName} mv /源路径 /目标目录</code> 移动
 • <code>${commandName} cp /源路径 /目标目录</code> 复制
-• <code>${commandName} del /路径 confirm</code> 删除
-• <code>${commandName} sp [路径]</code> 空间信息
+• <code>${commandName} rm /路径 confirm</code> 删除
+• <code>${commandName} df [路径]</code> 空间信息
 • <code>${commandName} dl /路径/文件</code> 下载并发送到 Telegram
 
 <b>3. 挂载点管理</b>
-• <code>${commandName} mnt list</code> 查看挂载点
-• <code>${commandName} mnt add /挂载点 /源目录 [readonly] [noauto]</code>
-• <code>${commandName} mnt update /挂载点 /新源目录 [readonly] [noauto]</code>
-• <code>${commandName} mnt mount|unmount /挂载点</code>
-• <code>${commandName} mnt remove /挂载点 confirm</code>
+• <code>${commandName} mount list</code> 查看挂载点
+• <code>${commandName} mount add /挂载点 /源目录 [readonly] [noauto]</code>
+• <code>${commandName} mount update /挂载点 /新源目录 [readonly] [noauto]</code>
+• <code>${commandName} mount mount|unmount /挂载点</code>
+• <code>${commandName} mount remove /挂载点 confirm</code>
 
 <b>4. 传输任务</b>
-• <code>${commandName} tx status</code> 任务统计
-• <code>${commandName} tx downloads</code> 下载任务列表
-• <code>${commandName} tx uploads [页码]</code> 上传任务列表
-• <code>${commandName} tx pause|resume|cancel all|KEY...</code> 控制上传任务
+• <code>${commandName} transfer status</code> 任务统计
+• <code>${commandName} transfer downloads</code> 下载任务列表
+• <code>${commandName} transfer uploads [页码]</code> 上传任务列表
+• <code>${commandName} transfer pause|resume|cancel all|KEY...</code> 控制上传任务
 
 <b>5. 云 API 管理</b>
-• <code>${commandName} cld list</code> 查看云 API
-• <code>${commandName} cld add webdav URL USER PASSWORD</code>
-• <code>${commandName} cld add local /本地目录</code>
-• <code>${commandName} cld add pikpak USER PASSWORD</code>
-• <code>${commandName} cld add aliyun-refresh REFRESH_TOKEN [openapi]</code>
-• <code>${commandName} cld remove CLOUD USER confirm</code>
-• <code>${commandName} cld config get|set CLOUD USER KEY VALUE</code>
+• <code>${commandName} api list</code> 查看云 API
+• <code>${commandName} api add webdav URL USER PASSWORD</code>
+• <code>${commandName} api add local /本地目录</code>
+• <code>${commandName} api add pikpak USER PASSWORD</code>
+• <code>${commandName} api add aliyun-refresh REFRESH_TOKEN [openapi]</code>
+• <code>${commandName} api remove CLOUD USER confirm</code>
+• <code>${commandName} api config get|set CLOUD USER KEY VALUE</code>
 
 <b>6. 备份管理</b>
-• <code>${commandName} bak list</code> 查看备份
-• <code>${commandName} bak add|update /源目录 /目标目录</code>
-• <code>${commandName} bak enable|watch /源目录 on|off</code>
-• <code>${commandName} bak destination add|remove /源目录 /目标目录</code>
-• <code>${commandName} bak restart /源目录</code>
-• <code>${commandName} bak remove /源目录 confirm</code>
+• <code>${commandName} backup list</code> 查看备份
+• <code>${commandName} backup add|update /源目录 /目标目录</code>
+• <code>${commandName} backup enable|watch /源目录 on|off</code>
+• <code>${commandName} backup destination add|remove /源目录 /目标目录</code>
+• <code>${commandName} backup restart /源目录</code>
+• <code>${commandName} backup remove /源目录 confirm</code>
 
 <b>7. WebDAV 管理</b>
-• <code>${commandName} dv status|on|off</code>
-• <code>${commandName} dv account on|off [/根目录]</code> CloudDrive 账户模式
-• <code>${commandName} dv add USER PASSWORD [/根目录]</code> 添加独立用户
-• <code>${commandName} dv remove USER confirm</code>
-• <code>${commandName} dv ls|mkdir|rm</code>
+• <code>${commandName} dav status|on|off</code>
+• <code>${commandName} dav account on|off [/根目录]</code> CloudDrive 账户模式
+• <code>${commandName} dav add USER PASSWORD [/根目录]</code> 添加独立用户
+• <code>${commandName} dav remove USER confirm</code>
+• <code>${commandName} dav ls|mkdir|rm</code>
 
 <b>8. 令牌管理</b>
-• <code>${commandName} in</code> 账户登录并获取 Token
-• <code>${commandName} tok show|clear|login</code>
-• <code>${commandName} cfg token YOUR_CD2_API_TOKEN</code>
+• <code>${commandName} login</code> 账户登录并获取 Token
+• <code>${commandName} token show|clear|login</code>
+• <code>${commandName} conf token YOUR_CD2_API_TOKEN</code>
 
 <b>9. 远程上传</b>
-• <code>${commandName} rem add URL [目标目录]</code> 提交离线下载/远程上传任务
-• <code>${commandName} rem list [路径]</code>
-• <code>${commandName} rem list-all CLOUD ACCOUNT [页码]</code>
-• <code>${commandName} rem remove CLOUD ACCOUNT confirm HASH...</code>
+• <code>${commandName} remote add URL [目标目录]</code> 提交离线下载/远程上传任务
+• <code>${commandName} remote list [路径]</code>
+• <code>${commandName} remote list-all CLOUD ACCOUNT [页码]</code>
+• <code>${commandName} remote remove CLOUD ACCOUNT confirm HASH...</code>
 • 回复 Telegram 文件后：<code>${commandName} up [目标目录]</code>
 
 <b>基础配置</b>
-• <code>${commandName} cfg endpoint http://host:19798</code>
-• <code>${commandName} cfg account USER PASSWORD</code>
-• <code>${commandName} cfg path /</code>
-• <code>${commandName} cfg dav-url http://host:19798/dav</code>
-• <code>${commandName} cfg dav-user USER PASSWORD</code>
-• <code>${commandName} cfg dav-root /Telegram</code>
-• <code>${commandName} cfg show</code>
+• <code>${commandName} conf endpoint http://host:19798</code>
+• <code>${commandName} conf account USER PASSWORD</code>
+• <code>${commandName} conf path /</code>
+• <code>${commandName} conf dav-url http://host:19798/dav</code>
+• <code>${commandName} conf dav-user USER PASSWORD</code>
+• <code>${commandName} conf dav-root /Telegram</code>
+• <code>${commandName} conf show</code>
 
 账户密码、Token、云 API 密钥只保存在插件自己的配置文件中，显示时会脱敏。`
 
@@ -195,7 +195,7 @@ const davPathUrl = (baseUrl: string, remotePath: string): URL => {
 const davRequest = (config: Cd2Config, method: string, remotePath: string, body?: Buffer, extraHeaders: Record<string, string> = {}): Promise<WebDavResponse> => {
   const username = config.webdavUsername || config.accountUsername
   const password = config.webdavPassword || config.accountPassword
-  if (!config.webdavUrl || !username || !password) throw new Error(`请先配置 WebDAV 地址和账号，使用 ${commandName} cfg dav-url|dav-user 或 ${commandName} cfg account|login`)
+  if (!config.webdavUrl || !username || !password) throw new Error(`请先配置 WebDAV 地址和账号，使用 ${commandName} conf dav-url|dav-user 或 ${commandName} conf account|login`)
   const target = davPathUrl(config.webdavUrl, remotePath)
   const transport = target.protocol === 'https:' ? https : http
   const headers: Record<string, string> = {
@@ -1092,7 +1092,7 @@ class Cd2Client {
 
   private async request(method: string, request: Record<string, unknown>, streaming: boolean): Promise<RpcResponse[]> {
     const config = await this.getConfig()
-    if (!config.endpoint) throw new Error(`请先配置 CD2 地址，使用 ${commandName} cfg endpoint ...`)
+    if (!config.endpoint) throw new Error(`请先配置 CD2 地址，使用 ${commandName} conf endpoint ...`)
     const parsed = new URL(config.endpoint)
     const session = http2.connect(parsed.origin, parsed.protocol === 'https:' ? { rejectUnauthorized: true } : undefined)
     return new Promise((resolve, reject) => {
@@ -1240,7 +1240,7 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'endpoint' || action === 'url') {
-      if (!args[1]) throw new Error(`用法：${commandName} cfg endpoint http://host:19798`)
+      if (!args[1]) throw new Error(`用法：${commandName} conf endpoint http://host:19798`)
       const endpoint = normalizeEndpoint(args[1])
       await this.updateConfig({ endpoint })
       await msg.edit({ text: htmlText(`✅ CD2 地址已设置为 <code>${htmlEscape(endpoint)}</code>`) })
@@ -1254,44 +1254,44 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'account') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} cfg account USER PASSWORD`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} conf account USER PASSWORD`)
       await this.updateConfig({ accountUsername: args[1], accountPassword: args[2], token: '' })
-      await msg.edit({ text: `✅ CloudDrive 账户已保存：<code>${htmlEscape(args[1])}</code>\n请继续使用 ${commandName} in 完成登录` })
+      await msg.edit({ text: `✅ CloudDrive 账户已保存：<code>${htmlEscape(args[1])}</code>\n请继续使用 ${commandName} login 完成登录` })
       return
     }
     if (action === 'path') {
-      if (!args[1]) throw new Error(`用法：${commandName} cfg path /目录`)
+      if (!args[1]) throw new Error(`用法：${commandName} conf path /目录`)
       const defaultPath = normalizePath(args[1])
       await this.updateConfig({ defaultPath })
       await msg.edit({ text: htmlText(`✅ 默认路径已设置为 <code>${htmlEscape(defaultPath)}</code>`) })
       return
     }
     if (action === 'dav-url') {
-      if (!args[1]) throw new Error(`用法：${commandName} cfg dav-url http://host:19798/dav`)
+      if (!args[1]) throw new Error(`用法：${commandName} conf dav-url http://host:19798/dav`)
       const webdavUrl = normalizeWebDavUrl(args[1])
       await this.updateConfig({ webdavUrl })
       await msg.edit({ text: htmlText(`✅ WebDAV 地址已设置为 <code>${htmlEscape(webdavUrl)}</code>`) })
       return
     }
     if (action === 'dav-user') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} cfg dav-user USER PASSWORD`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} conf dav-user USER PASSWORD`)
       await this.updateConfig({ webdavUsername: args[1], webdavPassword: args[2] })
       await msg.edit({ text: '✅ WebDAV 账号已保存' })
       return
     }
     if (action === 'dav-root') {
-      if (!args[1]) throw new Error(`用法：${commandName} cfg dav-root /目录`)
+      if (!args[1]) throw new Error(`用法：${commandName} conf dav-root /目录`)
       const webdavRoot = normalizePath(args[1])
       await this.updateConfig({ webdavRoot })
       await msg.edit({ text: htmlText(`✅ WebDAV 上传根目录已设置为 <code>${htmlEscape(webdavRoot)}</code>`) })
       return
     }
-    throw new Error(`用法：${commandName} cfg endpoint|token|account|path|dav-url|dav-user|dav-root|show`)
+    throw new Error(`用法：${commandName} conf endpoint|token|account|path|dav-url|dav-user|dav-root|show`)
   }
 
   private async handleLogin(msg: MessageContext): Promise<void> {
     const config = await this.getConfig()
-    if (!config.accountUsername || !config.accountPassword) throw new Error(`请先配置：${commandName} cfg account USER PASSWORD`)
+    if (!config.accountUsername || !config.accountPassword) throw new Error(`请先配置：${commandName} conf account USER PASSWORD`)
     await msg.edit({ text: '🔄 正在使用 CloudDrive 账户登录…' })
     const result = await this.getClient().unary('GetToken', { userName: config.accountUsername, password: config.accountPassword })
     if (!result.success || !result.token) throw new Error(result.errorMessage || 'CloudDrive 账户登录失败')
@@ -1314,27 +1314,27 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'register') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} ac register USER PASSWORD`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} account register USER PASSWORD`)
       const result = await this.getClient().unary('Register', { userName: args[1], password: args[2] })
       if (result.success === false) throw new Error(result.errorMessage || '账户注册失败')
       await msg.edit({ text: '✅ CloudDrive2 账户注册成功，请继续配置账户并登录' })
       return
     }
     if (action === 'reset-email') {
-      if (!args[1]) throw new Error(`用法：${commandName} ac reset-email EMAIL`)
+      if (!args[1]) throw new Error(`用法：${commandName} account reset-email EMAIL`)
       const result = await this.getClient().unary('SendResetAccountEmail', { email: args[1] })
       if (result.success === false) throw new Error(result.errorMessage || '重置邮件发送失败')
       await msg.edit({ text: '✅ 重置邮件已发送' })
       return
     }
     if (action === 'reset') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} ac reset RESET_CODE NEW_PASSWORD`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} account reset RESET_CODE NEW_PASSWORD`)
       const result = await this.getClient().unary('ResetAccount', { resetCode: args[1], newPassword: args[2] })
       if (result.success === false) throw new Error(result.errorMessage || '账户密码重置失败')
       await msg.edit({ text: '✅ 账户密码已重置' })
       return
     }
-    throw new Error(`用法：${commandName} ac status|logout|register|reset-email|reset`)
+    throw new Error(`用法：${commandName} account status|logout|register|reset-email|reset`)
   }
 
   private async handleToken(msg: MessageContext, args: string[]): Promise<void> {
@@ -1353,7 +1353,7 @@ class Cd2Plugin extends Plugin {
       await this.handleLogin(msg)
       return
     }
-    throw new Error(`用法：${commandName} tok show|clear|login`)
+    throw new Error(`用法：${commandName} token show|clear|login`)
   }
 
   private async handleVerify(msg: MessageContext): Promise<void> {
@@ -1397,7 +1397,7 @@ class Cd2Plugin extends Plugin {
 
   private async handleSearch(msg: MessageContext, args: string[]): Promise<void> {
     const keyword = args[0]?.trim()
-    if (!keyword) throw new Error(`用法：${commandName} sea 关键词 [路径]`)
+    if (!keyword) throw new Error(`用法：${commandName} grep 关键词 [路径]`)
     const config = await this.getConfig()
     const targetPath = normalizePath(args[1] || config.defaultPath)
     await msg.edit({ text: '🔄 正在搜索 CloudDrive2…' })
@@ -1450,7 +1450,7 @@ class Cd2Plugin extends Plugin {
             `${index + 1}. <b>${htmlEscape(cloud.name || '未知 API')}</b>\n   账户：<code>${htmlEscape(cloud.userName || cloud.nickName || '未知')}</code>\n   路径：<code>${htmlEscape(cloud.path || `/${cloud.name || ''}`)}</code>\n   状态：${cloud.isLocked ? '🔒 已锁定' : '✅ 可用'} · ${cloud.readOnly ? '只读' : '读写'} · 事件监听${cloud.eventListenerRunning ? '运行中' : '未运行'}\n   能力：${cloud.supportMultiThreadUploading ? '多线程上传' : '普通上传'}${cloud.supportQpsLimit ? ' · QPS 限制' : ''}`
         )
       : ['没有配置 Cloud API']
-    await msg.edit({ text: htmlText(['<b>☁️ Cloud API 管理</b>', `<b>数量：</b> ${clouds.length}`, '', ...lines, '', `配置：<code>${commandName} cld config get CLOUD USER</code>`, `删除：<code>${commandName} cld remove CLOUD USER confirm</code>`].join('\n')) })
+    await msg.edit({ text: htmlText(['<b>☁️ Cloud API 管理</b>', `<b>数量：</b> ${clouds.length}`, '', ...lines, '', `配置：<code>${commandName} api config get CLOUD USER</code>`, `删除：<code>${commandName} api remove CLOUD USER confirm</code>`].join('\n')) })
   }
 
   private async handleDownload(msg: MessageContext, inputPath: string): Promise<void> {
@@ -1496,14 +1496,14 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'add') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} mnt add /挂载点 /源目录 [readonly] [automount]`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} mount add /挂载点 /源目录 [readonly] [automount]`)
       const result = await this.getClient().unary('AddMountPoint', { mountPoint: normalizePath(args[1]), sourceDir: normalizePath(args[2]), localMount: false, readOnly: args[3]?.toLowerCase() === 'readonly', autoMount: args[4]?.toLowerCase() !== 'noauto' })
       if (result.success === false) throw new Error(result.failReason || '添加挂载点失败')
       await msg.edit({ text: '✅ 挂载点已添加' })
       return
     }
     if (action === 'remove' || action === 'mount' || action === 'unmount') {
-      if (!args[1] || (action === 'remove' && args[2]?.toLowerCase() !== 'confirm')) throw new Error(`用法：${commandName} mnt ${action} /挂载点${action === 'remove' ? ' confirm' : ''}`)
+      if (!args[1] || (action === 'remove' && args[2]?.toLowerCase() !== 'confirm')) throw new Error(`用法：${commandName} mount ${action} /挂载点${action === 'remove' ? ' confirm' : ''}`)
       const method = action === 'remove' ? 'RemoveMountPoint' : action === 'mount' ? 'Mount' : 'Unmount'
       const result = await this.getClient().unary(method, { mountPoint: normalizePath(args[1]) })
       if (result.success === false) throw new Error(result.failReason || `${action} 挂载点失败`)
@@ -1511,7 +1511,7 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'update') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} mnt update /挂载点 /新源目录 [readonly] [automount]`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} mount update /挂载点 /新源目录 [readonly] [automount]`)
       const result = await this.getClient().unary('UpdateMountPoint', {
         mountPoint: normalizePath(args[1]),
         newMountPoint: normalizePath(args[1]),
@@ -1524,7 +1524,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 挂载点已更新' })
       return
     }
-    throw new Error(`用法：${commandName} mnt list|can-add|add|update|mount|unmount|remove`)
+    throw new Error(`用法：${commandName} mount list|can-add|add|update|mount|unmount|remove`)
   }
 
   private async handleTransfer(msg: MessageContext, args: string[]): Promise<void> {
@@ -1557,13 +1557,13 @@ class Cd2Plugin extends Plugin {
         await this.getClient().unary(`${action === 'cancel' ? 'Cancel' : action === 'pause' ? 'Pause' : 'Resume'}AllUploadFiles`)
       } else {
         const keys = args.slice(1).filter(Boolean)
-        if (!keys.length) throw new Error(`用法：${commandName} tx ${action} all|KEY...`)
+        if (!keys.length) throw new Error(`用法：${commandName} transfer ${action} all|KEY...`)
         await this.getClient().unary(`${action === 'cancel' ? 'Cancel' : action === 'pause' ? 'Pause' : 'Resume'}UploadFiles`, { keys })
       }
       await msg.edit({ text: `✅ 上传任务已${verb}` })
       return
     }
-    throw new Error(`用法：${commandName} tx status|downloads|uploads [页码]|cancel|pause|resume all|KEY...`)
+    throw new Error(`用法：${commandName} transfer status|downloads|uploads [页码]|cancel|pause|resume all|KEY...`)
   }
 
   private async handleCloud(msg: MessageContext, args: string[]): Promise<void> {
@@ -1582,19 +1582,19 @@ class Cd2Plugin extends Plugin {
       let method = ''
       let request: Record<string, unknown> = {}
       if (type === 'webdav') {
-        if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} cld add webdav URL USER PASSWORD`)
+        if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} api add webdav URL USER PASSWORD`)
         method = 'APILoginWebDav'
         request = { serverUrl: args[2], userName: args[3], password: args[4] }
       } else if (type === 'local') {
-        if (!args[2]) throw new Error(`用法：${commandName} cld add local /本地目录`)
+        if (!args[2]) throw new Error(`用法：${commandName} api add local /本地目录`)
         method = 'APIAddLocalFolder'
         request = { localFolderPath: args[2] }
       } else if (type === 'pikpak') {
-        if (!args[2] || !args[3]) throw new Error(`用法：${commandName} cld add pikpak USER PASSWORD`)
+        if (!args[2] || !args[3]) throw new Error(`用法：${commandName} api add pikpak USER PASSWORD`)
         method = 'APILoginPikPak'
         request = { userName: args[2], password: args[3] }
       } else if (type === '115-cookie') {
-        if (!args[2]) throw new Error(`用法：${commandName} cld add 115-cookie COOKIE`)
+        if (!args[2]) throw new Error(`用法：${commandName} api add 115-cookie COOKIE`)
         method = 'APILogin115Editthiscookie'
         request = { editThiscookieString: args[2] }
       } else if (type === '115-qrcode' || type === 'aliyun-qrcode' || type === '189-qrcode') {
@@ -1605,15 +1605,15 @@ class Cd2Plugin extends Plugin {
         await msg.edit({ text: htmlText([`<b>🔐 ${htmlEscape(type)} 登录</b>`, '', ...lines].join('\n')) })
         return
       } else if (type === 'aliyun-oauth' || type === 'baidu-oauth' || type === 'onedrive-oauth' || type === 'google-oauth' || type === 'xunlei-oauth') {
-        if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} cld add ${type} REFRESH_TOKEN ACCESS_TOKEN EXPIRES_IN`)
+        if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} api add ${type} REFRESH_TOKEN ACCESS_TOKEN EXPIRES_IN`)
         method = { 'aliyun-oauth': 'APILoginAliyundriveOAuth', 'baidu-oauth': 'APILoginBaiduPanOAuth', 'onedrive-oauth': 'APILoginOneDriveOAuth', 'google-oauth': 'ApiLoginGoogleDriveOAuth', 'xunlei-oauth': 'APILoginXunleiOAuth' }[type]
         request = { refresh_token: args[2], access_token: args[3], expires_in: Number(args[4]) }
       } else if (type === 'aliyun-refresh') {
-        if (!args[2]) throw new Error(`用法：${commandName} cld add aliyun-refresh REFRESH_TOKEN [openapi]`)
+        if (!args[2]) throw new Error(`用法：${commandName} api add aliyun-refresh REFRESH_TOKEN [openapi]`)
         method = 'APILoginAliyundriveRefreshtoken'
         request = { refreshToken: args[2], useOpenAPI: args[3]?.toLowerCase() === 'openapi' }
       } else if (type === 'google-refresh') {
-        if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} cld add google-refresh CLIENT_ID CLIENT_SECRET REFRESH_TOKEN`)
+        if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} api add google-refresh CLIENT_ID CLIENT_SECRET REFRESH_TOKEN`)
         method = 'ApiLoginGoogleDriveRefreshToken'
         request = { client_id: args[2], client_secret: args[3], refresh_token: args[4] }
       } else {
@@ -1625,21 +1625,21 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'remove') {
-      if (!args[1] || !args[2] || args[3]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} cld remove CLOUD_NAME USER confirm`)
+      if (!args[1] || !args[2] || args[3]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} api remove CLOUD_NAME USER confirm`)
       const result = await this.getClient().unary('RemoveCloudAPI', { cloudName: args[1], userName: args[2], permanentRemove: false })
       if (result.success === false) throw new Error(result.errorMessage || '删除云 API 失败')
       await msg.edit({ text: '✅ 云 API 已删除' })
       return
     }
     if (action === 'config') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} cld config get|set CLOUD_NAME USER [KEY VALUE]`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} api config get|set CLOUD_NAME USER [KEY VALUE]`)
       const mode = args[1].toLowerCase()
       if (mode === 'get') {
         const result = await this.getClient().unary('GetCloudAPIConfig', { cloudName: args[2], userName: args[3] })
         await msg.edit({ text: htmlText(['<b>⚙️ 云 API 配置</b>', ...Object.entries(result).map(([key, value]) => `<b>${htmlEscape(key)}：</b> <code>${htmlEscape(String(value))}</code>`)].join('\n')) })
         return
       }
-      if (mode !== 'set' || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} cld config set CLOUD_NAME USER KEY VALUE`)
+      if (mode !== 'set' || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} api config set CLOUD_NAME USER KEY VALUE`)
       const key = args[4]
       const raw = args.slice(5).join(' ')
       const value = raw === 'true' ? true : raw === 'false' ? false : Number.isNaN(Number(raw)) ? raw : Number(raw)
@@ -1648,7 +1648,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 云 API 配置已更新' })
       return
     }
-    throw new Error(`用法：${commandName} cld list|can-add|add|remove|config`)
+    throw new Error(`用法：${commandName} api list|can-add|add|remove|config`)
   }
 
   private async handleBackup(msg: MessageContext, args: string[]): Promise<void> {
@@ -1672,20 +1672,20 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'add' || action === 'update') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} bak ${action} /源目录 /目标目录`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} backup ${action} /源目录 /目标目录`)
       const result = await this.getClient().unary(action === 'add' ? 'BackupAdd' : 'BackupUpdate', { sourcePath: normalizePath(args[1]), destinationPath: normalizePath(args[2]), isEnabled: true, fileSystemWatchEnabled: false })
       if (result.success === false) throw new Error(result.errorMessage || `备份${action === 'add' ? '添加' : '更新'}失败`)
       await msg.edit({ text: `✅ 备份已${action === 'add' ? '添加' : '更新'}` })
       return
     }
     if (action === 'remove') {
-      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} bak remove /源目录 confirm`)
+      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} backup remove /源目录 confirm`)
       await this.getClient().unary('BackupRemove', { value: normalizePath(args[1]) })
       await msg.edit({ text: '✅ 备份已删除' })
       return
     }
     if (action === 'enable' || action === 'watch') {
-      if (!args[1] || !['on', 'off'].includes(args[2]?.toLowerCase() || '')) throw new Error(`用法：${commandName} bak ${action} /源目录 on|off`)
+      if (!args[1] || !['on', 'off'].includes(args[2]?.toLowerCase() || '')) throw new Error(`用法：${commandName} backup ${action} /源目录 on|off`)
       const enabled = args[2].toLowerCase() === 'on'
       const method = action === 'enable' ? 'BackupSetEnabled' : 'BackupSetFileSystemWatchEnabled'
       const result = await this.getClient().unary(method, action === 'enable' ? { sourcePath: normalizePath(args[1]), isEnabled: enabled } : { sourcePath: normalizePath(args[1]), fileSystemWatchEnabled: enabled })
@@ -1694,26 +1694,26 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'destination') {
-      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} bak destination add|remove /源目录 /目标目录`)
+      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} backup destination add|remove /源目录 /目标目录`)
       const mode = args[1].toLowerCase()
-      if (mode !== 'add' && mode !== 'remove') throw new Error(`用法：${commandName} bak destination add|remove /源目录 /目标目录`)
+      if (mode !== 'add' && mode !== 'remove') throw new Error(`用法：${commandName} backup destination add|remove /源目录 /目标目录`)
       await this.getClient().unary(mode === 'add' ? 'BackupAddDestination' : 'BackupRemoveDestination', { sourcePath: normalizePath(args[2]), destinationPath: normalizePath(args[3]), destinationEnabled: mode === 'add' })
       await msg.edit({ text: `✅ 备份目标已${mode === 'add' ? '添加' : '删除'}` })
       return
     }
     if (action === 'restart') {
-      if (!args[1]) throw new Error(`用法：${commandName} bak restart /源目录`)
+      if (!args[1]) throw new Error(`用法：${commandName} backup restart /源目录`)
       await this.getClient().unary('BackupRestartWalkingThrough', { value: normalizePath(args[1]) })
       await msg.edit({ text: '✅ 备份扫描已重新开始' })
       return
     }
-    throw new Error(`用法：${commandName} bak list|can-add|add|update|remove|enable|watch|destination|restart`)
+    throw new Error(`用法：${commandName} backup list|can-add|add|update|remove|enable|watch|destination|restart`)
   }
 
   private async handleRemote(msg: MessageContext, args: string[]): Promise<void> {
     const action = args[0]?.toLowerCase() || 'list'
     if (action === 'add') {
-      if (!args[1]) throw new Error(`用法：${commandName} rem add URL [目标目录]`)
+      if (!args[1]) throw new Error(`用法：${commandName} remote add URL [目标目录]`)
       const result = await this.getClient().unary('AddOfflineFiles', { urls: args[1], toFolder: normalizePath(args[2] || '/') })
       if (result.success === false) throw new Error(result.errorMessage || '远程上传任务提交失败')
       await msg.edit({ text: htmlText(['✅ <b>远程上传任务已提交</b>', ...(result.resultFilePaths || []).map((item: string) => `<code>${htmlEscape(item)}</code>`)].join('\n')) })
@@ -1734,14 +1734,14 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'remove') {
-      if (!args[1] || !args[2] || args[3]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} rem remove CLOUD_NAME CLOUD_ACCOUNT_ID confirm [HASH...]`)
+      if (!args[1] || !args[2] || args[3]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} remote remove CLOUD_NAME CLOUD_ACCOUNT_ID confirm [HASH...]`)
       const hashes = args.slice(4)
       if (!hashes.length) throw new Error('至少需要一个 infoHash')
       await this.getClient().unary('RemoveOfflineFiles', { cloudName: args[1], cloudAccountId: args[2], deleteFiles: false, infoHashes: hashes })
       await msg.edit({ text: '✅ 远程上传任务已删除' })
       return
     }
-    throw new Error(`用法：${commandName} rem add|list|list-all|remove`)
+    throw new Error(`用法：${commandName} remote add|list|list-all|remove`)
   }
 
   private async handleDav(msg: MessageContext, args: string[]): Promise<void> {
@@ -1783,8 +1783,8 @@ class Cd2Plugin extends Plugin {
     }
     if (action === 'account') {
       const accountAction = args[1]?.toLowerCase()
-      if (accountAction !== 'on' && accountAction !== 'off') throw new Error(`用法：${commandName} dv account on|off [/根目录]`)
-      if (accountAction === 'on' && (!config.accountUsername || !config.accountPassword)) throw new Error(`请先配置 CloudDrive 账户：${commandName} cfg account USER PASSWORD`)
+      if (accountAction !== 'on' && accountAction !== 'off') throw new Error(`用法：${commandName} dav account on|off [/根目录]`)
+      if (accountAction === 'on' && (!config.accountUsername || !config.accountPassword)) throw new Error(`请先配置 CloudDrive 账户：${commandName} conf account USER PASSWORD`)
       const rootPath = args[2] ? normalizePath(args[2]) : config.webdavRoot
       const serverEnabled = accountAction === 'on' ? true : Boolean((await this.getClient().unary('GetDavServerConfig')).davServerEnabled)
       await this.getClient().unary('SetDavServerConfig', {
@@ -1819,30 +1819,30 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'mkdir') {
-      if (!args[1]) throw new Error(`用法：${commandName} dv mkdir /路径`)
+      if (!args[1]) throw new Error(`用法：${commandName} dav mkdir /路径`)
       await davRequest(config, 'MKCOL', normalizePath(args[1]))
       await msg.edit({ text: '✅ WebDAV 目录已创建' })
       return
     }
     if (action === 'rm') {
-      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} dv rm /路径 confirm`)
+      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} dav rm /路径 confirm`)
       await davRequest(config, 'DELETE', normalizePath(args[1]))
       await msg.edit({ text: '✅ WebDAV 路径已删除' })
       return
     }
     if (action === 'add') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} dv add USER PASSWORD [/根目录]`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} dav add USER PASSWORD [/根目录]`)
       await this.getClient().unary('AddDavUser', { userName: args[1], password: args[2], rootPath: args[3] ? normalizePath(args[3]) : '/', readOnly: false, enabled: true, guest: false })
       await msg.edit({ text: `✅ WebDAV 用户 <code>${htmlEscape(args[1])}</code> 已添加` })
       return
     }
     if (action === 'remove') {
-      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} dv remove USER confirm`)
+      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} dav remove USER confirm`)
       await this.getClient().unary('RemoveDavUser', { value: args[1] })
       await msg.edit({ text: `✅ WebDAV 用户 <code>${htmlEscape(args[1])}</code> 已删除` })
       return
     }
-    throw new Error(`用法：${commandName} dv status|on|off|account|ls|mkdir|rm|add|remove`)
+    throw new Error(`用法：${commandName} dav status|on|off|account|ls|mkdir|rm|add|remove`)
   }
 
   private async handleUpload(msg: MessageContext, args: string[]): Promise<void> {
@@ -1867,15 +1867,15 @@ class Cd2Plugin extends Plugin {
 
   private async handleMutation(msg: MessageContext, args: string[]): Promise<void> {
     const action = args[0]?.toLowerCase()
-    if (action === 'mk') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} mk /父目录 文件夹名`)
+    if (action === 'mkdir') {
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} mkdir /父目录 文件夹名`)
       const result = await this.getClient().unary('CreateFolder', { parentPath: normalizePath(args[1]), folderName: args.slice(2).join(' ') })
       if (result.result && result.result.success === false) throw new Error(result.result.errorMessage || '创建文件夹失败')
       await msg.edit({ text: '✅ 文件夹已创建' })
       return
     }
-    if (action === 'del') {
-      if (args.length < 3 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} del /路径 confirm`)
+    if (action === 'rm') {
+      if (args.length < 3 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} rm /路径 confirm`)
       const targetPath = args.slice(1, -1).join(' ')
       const result = await this.getClient().unary('DeleteFile', { path: normalizePath(targetPath) })
       if (result.success === false) throw new Error(result.errorMessage || '删除失败')
@@ -1890,15 +1890,15 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: `✅ ${action === 'mv' ? '移动' : '复制'}任务已提交` })
       return
     }
-    if (action === 'rn') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} rn /文件 新名称`)
+    if (action === 'rename') {
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} rename /文件 新名称`)
       const targetPath = normalizePath(args[1])
       const result = await this.getClient().unary('RenameFile', { theFilePath: targetPath, newName: args.slice(2).join(' ') })
       if (result.success === false) throw new Error(result.errorMessage || '重命名失败')
       await msg.edit({ text: '✅ 文件已重命名' })
       return
     }
-    throw new Error(`未知文件操作，使用 ${commandName} hl 查看帮助`)
+    throw new Error(`未知文件操作，使用 ${commandName} h 查看帮助`)
   }
 
   cmdHandlers: Record<string, (msg: MessageContext) => Promise<void>> = {
@@ -1906,52 +1906,52 @@ class Cd2Plugin extends Plugin {
       try {
         const args = tokenize(msg.text).slice(1)
         const subcommand = args[0]?.toLowerCase()
-        if (!subcommand || subcommand === 'hl') {
+        if (!subcommand || subcommand === 'h') {
           await msg.edit({ text: htmlText(helpText), disableWebPreview: true })
-        } else if (subcommand === 'cfg') {
+        } else if (subcommand === 'conf') {
           await this.handleConfig(msg, args.slice(1))
-        } else if (subcommand === 'in') {
+        } else if (subcommand === 'login') {
           await this.handleLogin(msg)
-        } else if (subcommand === 'tok') {
+        } else if (subcommand === 'token') {
           await this.handleToken(msg, args.slice(1))
-        } else if (subcommand === 'ac') {
+        } else if (subcommand === 'account') {
           await this.handleAccount(msg, args.slice(1))
-        } else if (subcommand === 'vf') {
+        } else if (subcommand === 'check') {
           await this.handleVerify(msg)
-        } else if (subcommand === 'st') {
+        } else if (subcommand === 'status') {
           await this.handleStatus(msg)
         } else if (subcommand === 'ls') {
           await this.handleList(msg, args.slice(1).join(' ') || undefined)
-        } else if (subcommand === 'fi') {
-          if (!args[1]) throw new Error(`用法：${commandName} fi /路径/文件`)
+        } else if (subcommand === 'find') {
+          if (!args[1]) throw new Error(`用法：${commandName} find /路径/文件`)
           await this.handleFind(msg, args.slice(1).join(' '))
-        } else if (subcommand === 'sea') {
+        } else if (subcommand === 'grep') {
           await this.handleSearch(msg, args.slice(1))
-        } else if (subcommand === 'sp') {
+        } else if (subcommand === 'df') {
           await this.handleSpace(msg, args.slice(1).join(' ') || undefined)
-        } else if (subcommand === 'tsk') {
+        } else if (subcommand === 'tasks') {
           await this.handleTasks(msg)
-        } else if (subcommand === 'tx') {
+        } else if (subcommand === 'transfer') {
           await this.handleTransfer(msg, args.slice(1))
-        } else if (subcommand === 'mnt') {
+        } else if (subcommand === 'mount') {
           await this.handleMount(msg, args.slice(1))
-        } else if (subcommand === 'cld') {
+        } else if (subcommand === 'api') {
           await this.handleCloud(msg, args.slice(1))
-        } else if (subcommand === 'bak') {
+        } else if (subcommand === 'backup') {
           await this.handleBackup(msg, args.slice(1))
-        } else if (subcommand === 'rem') {
+        } else if (subcommand === 'remote') {
           await this.handleRemote(msg, args.slice(1))
         } else if (subcommand === 'dl') {
           if (!args[1]) throw new Error(`用法：${commandName} dl /路径/文件`)
           await this.handleDownload(msg, args.slice(1).join(' '))
-        } else if (subcommand === 'dv') {
+        } else if (subcommand === 'dav') {
           await this.handleDav(msg, args.slice(1))
         } else if (subcommand === 'up') {
           await this.handleUpload(msg, args.slice(1))
-        } else if (['mk', 'del', 'mv', 'cp', 'rn'].includes(subcommand)) {
+        } else if (['mkdir', 'rm', 'mv', 'cp', 'rename'].includes(subcommand)) {
           await this.handleMutation(msg, args)
         } else {
-          throw new Error(`未知命令，使用 ${commandName} hl 查看帮助`)
+          throw new Error(`未知命令，使用 ${commandName} h 查看帮助`)
         }
       } catch (error) {
         await msg.edit({ text: htmlText(`❌ ${htmlEscape(errorMessage(error))}`), disableWebPreview: true })

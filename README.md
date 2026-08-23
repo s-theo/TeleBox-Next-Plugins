@@ -35,39 +35,39 @@ Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账�
 The `cd2` plugin uses CloudDrive2's gRPC API. Configure it in Telegram after loading the plugin:
 
 ```text
-.cd2 cfg endpoint http://host:19798
-.cd2 cfg account YOUR_CLOUDDRIVE_USERNAME YOUR_CLOUDDRIVE_PASSWORD
-.cd2 in
-.cd2 vf
+.cd2 conf endpoint http://host:19798
+.cd2 conf account YOUR_CLOUDDRIVE_USERNAME YOUR_CLOUDDRIVE_PASSWORD
+.cd2 login
+.cd2 check
 ```
 
 也可以使用已有的 API Token：
 
 ```text
-.cd2 cfg token YOUR_CD2_API_TOKEN
+.cd2 conf token YOUR_CD2_API_TOKEN
 ```
 
 WebDAV management and Telegram upload:
 
 ```text
-.cd2 cfg dav-url http://host:19798/dav
-.cd2 dv on
-.cd2 dv account on /Telegram
-.cd2 cfg dav-user USER PASSWORD
-.cd2 cfg dav-root /Telegram
-.cd2 dv status
-.cd2 dv ls /
-.cd2 dv add USER PASSWORD /Telegram
-.cd2 dv account off
-.cd2 dv remove USER confirm
+.cd2 conf dav-url http://host:19798/dav
+.cd2 dav on
+.cd2 dav account on /Telegram
+.cd2 conf dav-user USER PASSWORD
+.cd2 conf dav-root /Telegram
+.cd2 dav status
+.cd2 dav ls /
+.cd2 dav add USER PASSWORD /Telegram
+.cd2 dav account off
+.cd2 dav remove USER confirm
 .cd2 up
 ```
 
-`.cd2 in` 配置的 CloudDrive 账户可以直接用于 WebDAV；`.cd2 dv account on` 启用账户模式。`.cd2 dv add` 仍然可以添加独立的 WebDAV 用户，两种模式可以同时使用。`.cd2 dv status` 会分别显示账户模式和独立用户；消息使用真实换行显示。
+`.cd2 login` 配置的 CloudDrive 账户可以直接用于 WebDAV；`.cd2 dav account on` 启用账户模式。`.cd2 dav add` 仍然可以添加独立的 WebDAV 用户，两种模式可以同时使用。`.cd2 dav status` 会分别显示账户模式和独立用户；消息使用真实换行显示。
 
 Reply to a Telegram file before sending `.cd2 up [目标目录]`; the file is downloaded through the host Telegram client and uploaded with WebDAV `PUT`. The target argument is always treated as a directory, so both `.cd2 up /GoogleDrive` and `.cd2 up /GoogleDrive/` are valid. If Telegram does not provide a filename, the plugin adds an extension from the media type, such as `.jpg` for a photo.
 
-Use `.cd2 dl /路径/文件` to download a file from CloudDrive2 and send it to the current Telegram chat. Paths containing spaces are supported without quoting. Commands use short names after `.cd2`, generally 2–4 characters.
+Use `.cd2 dl /路径/文件` to download a file from CloudDrive2 and send it to the current Telegram chat. Paths containing spaces are supported without quoting. Linux-style commands such as `ls`, `find`, `grep`, `mkdir`, `mv`, `cp`, `rm`, `df`, and `mount` are used where appropriate.
 
 ## Development
 
