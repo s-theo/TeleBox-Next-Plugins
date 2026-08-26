@@ -16,7 +16,7 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 
 ## cd2 setup
 
-帮助入口：`.h cd2`。直接输入 `.cd2` 不会显示帮助；`.cd2 h` 不是帮助命令。
+帮助入口：`.h cd2`。直接输入 `.cd2` 或 `.cd2 h` 不会显示任何内容。
 
 当前已接入的命令和用途：
 

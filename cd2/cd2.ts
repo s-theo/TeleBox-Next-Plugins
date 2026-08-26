@@ -216,8 +216,8 @@ const helpSections: HelpSection[] = [
       `${commandName} backup add SOURCE DEST — 添加备份任务`,
       `${commandName} backup update SOURCE DEST — 更新备份任务`,
       `${commandName} backup remove SOURCE confirm — 删除备份任务`,
-      `${commandName} backup enable SOURCE on|off — 开关备份任务`,
-      `${commandName} backup watch SOURCE on|off — 开关文件监听`,
+      `${commandName} backup enable SOURCE 开关 — 开关备份任务`,
+      `${commandName} backup watch SOURCE 开关 — 开关文件监听`,
       `${commandName} backup destination add SOURCE DEST — 添加备份目标`,
       `${commandName} backup destination remove SOURCE DEST — 删除备份目标`,
       `${commandName} backup status SOURCE — 查看备份状态`,
@@ -273,7 +273,7 @@ const helpSections: HelpSection[] = [
       `${commandName} system service shutdown confirm — 关闭服务`,
       `${commandName} system service update confirm — 更新服务`,
       `${commandName} system web get — 查看 Web 服务配置`,
-      `${commandName} system web set PORT HTTPS_PORT on|off — 修改 Web 服务配置`,
+      `${commandName} system web set PORT HTTPS_PORT 开关 — 修改 Web 服务配置`,
       `${commandName} system web self-cert confirm — 生成自签名证书`,
       `${commandName} dav status — 查看 WebDAV 状态`,
       `${commandName} dav on — 开启 WebDAV`,
@@ -546,6 +546,8 @@ const _buildHelpMessages = (collapse: boolean): string[] =>
 
 const htmlText = (text: string): string => html(text)
 
+const usageText = (...commands: string[]): string => commands.map((command) => `用法：${command}`).join('\n')
+
 const maskToken = (token: string): string => {
   if (!token) return '未设置'
   if (token.length <= 8) return `${token.slice(0, 2)}••••••`
@@ -599,7 +601,7 @@ const davPathUrl = (baseUrl: string, remotePath: string): URL => {
 const davRequest = (config: Cd2Config, method: string, remotePath: string, body?: Buffer, extraHeaders: Record<string, string> = {}): Promise<WebDavResponse> => {
   const username = config.webdavUsername || config.accountUsername
   const password = config.webdavPassword || config.accountPassword
-  if (!config.webdavUrl || !username || !password) throw new Error(`请先配置 WebDAV 地址和账号，使用 ${commandName} conf dav-url|dav-user 或 ${commandName} conf account|login`)
+  if (!config.webdavUrl || !username || !password) throw new Error(`请先配置 WebDAV 地址和账号，使用 ${commandName} conf dav-url 或 ${commandName} conf dav-user，也可以使用 ${commandName} conf account 后执行 ${commandName} login`)
   const target = davPathUrl(config.webdavUrl, remotePath)
   const transport = target.protocol === 'https:' ? https : http
   const headers: Record<string, string> = {
@@ -731,7 +733,7 @@ const parseProxySetting = (value: string): Record<string, unknown> => {
   if (normalized === 'none' || normalized === 'off') return { proxyType: 1 }
   const url = new URL(value)
   const proxyType = url.protocol === 'http:' || url.protocol === 'https:' ? 2 : url.protocol === 'socks5:' ? 3 : -1
-  if (proxyType < 0) throw new Error('代理只支持 system|none|http://|https://|socks5://')
+  if (proxyType < 0) throw new Error('代理类型只支持 system、none、http://、https://、socks5://')
   return { proxyType, host: url.hostname, port: Number(url.port || (proxyType === 2 ? 8080 : 1080)), username: decodeURIComponent(url.username), password: decodeURIComponent(url.password) }
 }
 
@@ -902,7 +904,7 @@ const READ_TOKEN_PERMISSIONS = new Set([
 
 const tokenPermissions = (profile: string): Record<string, boolean> => {
   const normalized = profile.toLowerCase()
-  if (!['read', 'write', 'full'].includes(normalized)) throw new Error('Token 权限预设只支持 read|write|full')
+  if (!['read', 'write', 'full'].includes(normalized)) throw new Error('Token 权限预设只支持 read、write、full')
   return Object.fromEntries(TOKEN_PERMISSION_FIELDS.map((name) => [name, normalized === 'full' || normalized === 'write' || READ_TOKEN_PERMISSIONS.has(name)]))
 }
 
@@ -2512,10 +2514,10 @@ class Cd2Plugin extends Plugin {
     const config = await this.getConfig()
     const state = args[0]?.toLowerCase()
     if (!state) {
-      await msg.edit({ text: htmlText(`📖 Telegram 原生折叠：${config.collapse ? '开启' : '关闭'}\n用法：${commandName} collapse on|off`) })
+      await msg.edit({ text: htmlText(`📖 Telegram 原生折叠：${config.collapse ? '开启' : '关闭'}\n${usageText(`${commandName} collapse on`, `${commandName} collapse off`)}`) })
       return
     }
-    if (args.length !== 1 || (state !== 'on' && state !== 'off')) throw new Error(`用法：${commandName} collapse on|off`)
+    if (args.length !== 1 || (state !== 'on' && state !== 'off')) throw new Error(usageText(`${commandName} collapse on`, `${commandName} collapse off`))
     await this.updateConfig({ collapse: state === 'on' })
     await msg.edit({ text: htmlText(`✅ Telegram 原生折叠已${state === 'on' ? '开启' : '关闭'}`) })
   }
@@ -2684,7 +2686,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ CloudDrive2 账户已注销，本地账户和 Token 已清除' })
       return
     }
-    throw new Error(`用法：${commandName} account status|logout|register|reset-email|reset|delete-email|delete`)
+    throw new Error(usageText(`${commandName} account status`, `${commandName} account logout`, `${commandName} account register`, `${commandName} account reset-email`, `${commandName} account reset`, `${commandName} account delete-email`, `${commandName} account delete`))
   }
 
   private async handleTwoFactor(msg: MessageContext, args: string[]): Promise<void> {
@@ -2744,7 +2746,20 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 当前设备已解绑' })
       return
     }
-    throw new Error(`用法：${commandName} 2fa status|setup|enable|disable|recovery|regenerate|login|send-disable-email|disable-email|unbind`)
+    throw new Error(
+      usageText(
+        `${commandName} 2fa status`,
+        `${commandName} 2fa setup`,
+        `${commandName} 2fa enable`,
+        `${commandName} 2fa disable`,
+        `${commandName} 2fa recovery`,
+        `${commandName} 2fa regenerate`,
+        `${commandName} 2fa login`,
+        `${commandName} 2fa send-disable-email`,
+        `${commandName} 2fa disable-email`,
+        `${commandName} 2fa unbind`
+      )
+    )
   }
 
   private async handleSessions(msg: MessageContext, args: string[]): Promise<void> {
@@ -2770,7 +2785,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 其他会话已全部撤销' })
       return
     }
-    throw new Error(`用法：${commandName} session list|revoke|revoke-others`)
+    throw new Error(usageText(`${commandName} session list`, `${commandName} session revoke`, `${commandName} session revoke-others`))
   }
 
   private async handleToken(msg: MessageContext, args: string[]): Promise<void> {
@@ -2826,7 +2841,7 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'create') {
-      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} token create NAME ROOT read|write|full [EXPIRES_SECONDS]`)
+      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} token create 名称 根目录 权限 [有效秒数]`)
       const expiresIn = args[4] === undefined ? undefined : Number(args[4])
       if (expiresIn !== undefined && (!Number.isInteger(expiresIn) || expiresIn < 0)) throw new Error('EXPIRES_SECONDS 必须是非负整数，0 表示永不过期')
       const result = await this.getClient().unary('CreateToken', { friendlyName: args[1], rootDir: normalizePath(args[2]), permissions: tokenPermissions(args[3]), expiresIn })
@@ -2834,7 +2849,7 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'modify') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} token modify TOKEN name=... root=/... perm=read|write|full expires=秒 grpc=on|off stream-log=on|off`)
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} token modify 令牌 name=名称 root=目录 perm=权限 expires=秒 grpc=开关 stream-log=开关`)
       const options = Object.fromEntries(
         args.slice(2).map((item) => {
           const separator = item.indexOf('=')
@@ -2859,7 +2874,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ API Token 已删除' })
       return
     }
-    throw new Error(`用法：${commandName} token show|clear|login|list|info|create|modify|remove`)
+    throw new Error(usageText(`${commandName} token show`, `${commandName} token clear`, `${commandName} token login`, `${commandName} token list`, `${commandName} token info`, `${commandName} token create`, `${commandName} token modify`, `${commandName} token remove`))
   }
 
   private async handleVerify(msg: MessageContext): Promise<void> {
@@ -2938,7 +2953,7 @@ class Cd2Plugin extends Plugin {
   private async handleFileInfo(msg: MessageContext, args: string[]): Promise<void> {
     const action = args[0]?.toLowerCase()
     const targetPath = normalizePath(args.slice(1).join(' '))
-    if (!action || !args[1]) throw new Error(`用法：${commandName} file detail|meta|original /路径`)
+    if (!action || !args[1]) throw new Error(usageText(`${commandName} file detail /路径`, `${commandName} file meta /路径`, `${commandName} file original /路径`))
     if (action === 'detail') {
       const result = await this.getClient().unary('GetFileDetailProperties', { path: targetPath, forceRefresh: false })
       await msg.edit({
@@ -2968,7 +2983,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: htmlText(`<b>原始路径：</b> <code>${htmlEscape(result.result || '')}</code>`) })
       return
     }
-    throw new Error(`用法：${commandName} file detail|meta|original /路径`)
+    throw new Error(usageText(`${commandName} file detail /路径`, `${commandName} file meta /路径`, `${commandName} file original /路径`))
   }
 
   private async handleSpace(msg: MessageContext, inputPath?: string): Promise<void> {
@@ -3075,7 +3090,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 挂载点已更新' })
       return
     }
-    throw new Error(`用法：${commandName} mount list|can-add|add|update|mount|unmount|remove`)
+    throw new Error(usageText(`${commandName} mount list`, `${commandName} mount can-add`, `${commandName} mount add`, `${commandName} mount update`, `${commandName} mount mount`, `${commandName} mount unmount`, `${commandName} mount remove`))
   }
 
   private async handleTransfer(msg: MessageContext, args: string[]): Promise<void> {
@@ -3097,8 +3112,8 @@ class Cd2Plugin extends Plugin {
       const page = Number(args[1] || 1)
       const operatorType = args[2] ? { mount: 0, copy: 1, backup: 2, remote: 3 }[args[2].toLowerCase()] : undefined
       const statusFilter = args[3] ? { waiting: 0, preprocessing: 1, cancelled: 2, transfer: 3, paused: 4, finished: 5, skipped: 6, queued: 7, ignored: 8, error: 9, fatal: 10 }[args[3].toLowerCase()] : undefined
-      if (args[2] && operatorType === undefined) throw new Error('上传任务类型只支持 mount|copy|backup|remote')
-      if (args[3] && statusFilter === undefined) throw new Error('上传状态只支持 waiting|preprocessing|cancelled|transfer|paused|finished|skipped|queued|ignored|error|fatal')
+      if (args[2] && operatorType === undefined) throw new Error('上传任务类型只支持 mount、copy、backup、remote')
+      if (args[3] && statusFilter === undefined) throw new Error('上传状态只支持 waiting、preprocessing、cancelled、transfer、paused、finished、skipped、queued、ignored、error、fatal')
       const result = await this.getClient().unary('GetUploadFileList', { getAll: true, itemsPerPage: MAX_ITEMS, pageNumber: Number.isFinite(page) && page > 0 ? page : 1, operatorTypeFilter: operatorType, statusFilter })
       const files = (result.uploadFiles || []) as RpcResponse[]
       const types = ['挂载', '复制', '备份', '远程上传']
@@ -3151,14 +3166,26 @@ class Cd2Plugin extends Plugin {
         return
       } else if (operation === 'pause' || operation === 'resume' || operation === 'remove') {
         const taskKeys = args.slice(2)
-        if (!taskKeys.length) throw new Error(`用法：${commandName} transfer copy ${operation} TASK_KEY...`)
+        if (!taskKeys.length) throw new Error(`用法：${commandName} transfer copy ${operation} 任务键`)
         const method = operation === 'pause' ? 'PauseCopyTasks' : operation === 'resume' ? 'ResumeCopyTasks' : 'RemoveCopyTasks'
         const result = await this.getClient().unary(method, { taskKeys, pause: operation === 'pause' })
         if (result.success === false) throw new Error(result.errorMessage || '复制任务控制失败')
         await msg.edit({ text: `✅ 已处理 ${result.affectedCount ?? taskKeys.length} 个复制任务` })
         return
       } else {
-        throw new Error(`用法：${commandName} transfer copy pause|resume|remove TASK_KEY...|pause-all|resume-all|remove-completed|remove-all|cancel|restart SOURCE DEST`)
+        throw new Error(
+          usageText(
+            `${commandName} transfer copy pause TASK_KEY`,
+            `${commandName} transfer copy resume TASK_KEY`,
+            `${commandName} transfer copy remove TASK_KEY`,
+            `${commandName} transfer copy pause-all`,
+            `${commandName} transfer copy resume-all`,
+            `${commandName} transfer copy remove-completed`,
+            `${commandName} transfer copy remove-all`,
+            `${commandName} transfer copy cancel SOURCE DEST`,
+            `${commandName} transfer copy restart SOURCE DEST`
+          )
+        )
       }
       await msg.edit({ text: '✅ 复制任务控制命令已执行' })
       return
@@ -3176,13 +3203,13 @@ class Cd2Plugin extends Plugin {
         await this.getClient().unary(`${action === 'cancel' ? 'Cancel' : action === 'pause' ? 'Pause' : 'Resume'}AllUploadFiles`)
       } else {
         const keys = args.slice(1).filter(Boolean)
-        if (!keys.length) throw new Error(`用法：${commandName} transfer ${action} all|KEY...`)
+        if (!keys.length) throw new Error(`用法：${commandName} transfer ${action} all 或任务键`)
         await this.getClient().unary(`${action === 'cancel' ? 'Cancel' : action === 'pause' ? 'Pause' : 'Resume'}UploadFiles`, { keys })
       }
       await msg.edit({ text: `✅ 上传任务已${verb}` })
       return
     }
-    throw new Error(`用法：${commandName} transfer status|downloads|uploads [页码]|cancel|pause|resume all|KEY...`)
+    throw new Error(usageText(`${commandName} transfer status`, `${commandName} transfer downloads [页码]`, `${commandName} transfer uploads [页码]`, `${commandName} transfer cancel all 或任务键`, `${commandName} transfer pause all 或任务键`, `${commandName} transfer resume all 或任务键`))
   }
 
   private async handleCloud(msg: MessageContext, args: string[]): Promise<void> {
@@ -3274,7 +3301,9 @@ class Cd2Plugin extends Plugin {
         method = 'APILoginCloudDrive'
         request = { grpcUrl: args[2], token: args[3], insecureTls: args[4]?.toLowerCase() === 'insecure', doNotSyncToCloud: false }
       } else {
-        throw new Error('支持：webdav|local|pikpak|115-cookie|115-qrcode|115-open|115-open-qrcode|aliyun-oauth|aliyun-refresh|aliyun-qrcode|baidu-oauth|onedrive-oauth|google-oauth|google-refresh|xunlei-oauth|xunlei-open|123-oauth|guangya-oauth|guangya-qrcode|s3|sftp|ftp|smb|clouddrive')
+        throw new Error(
+          '支持：webdav、local、pikpak、115-cookie、115-qrcode、115-open、115-open-qrcode、aliyun-oauth、aliyun-refresh、aliyun-qrcode、baidu-oauth、onedrive-oauth、google-oauth、google-refresh、xunlei-oauth、xunlei-open、123-oauth、guangya-oauth、guangya-qrcode、s3、sftp、ftp、smb、clouddrive'
+        )
       }
       const result = await this.getClient().unary(method, request)
       if (result.success === false) throw new Error(result.errorMessage || '添加云 API 失败')
@@ -3303,7 +3332,7 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'config') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} api config get|set CLOUD_NAME USER [KEY VALUE]`)
+      if (!args[1] || !args[2]) throw new Error(usageText(`${commandName} api config get CLOUD_NAME USER`, `${commandName} api config set CLOUD_NAME USER KEY VALUE`))
       const mode = args[1].toLowerCase()
       if (mode === 'get') {
         const result = await this.getClient().unary('GetCloudAPIConfig', { cloudName: args[2], userName: args[3] })
@@ -3330,7 +3359,7 @@ class Cd2Plugin extends Plugin {
         'supportDirectLink',
         'useMultithreadDownloaderForCopy'
       ])
-      if (!mutable.has(key)) throw new Error(`配置项不可修改；支持：${[...mutable].join('|')}`)
+      if (!mutable.has(key)) throw new Error(`配置项不可修改；支持：${[...mutable].join('、')}`)
       const booleans = new Set(['forceIpv4', 'insecureTls', 'useHttpDownload', 'supportDirectLink', 'useMultithreadDownloaderForCopy'])
       const proxies = new Set(['apiProxy', 'dataProxy'])
       const value = proxies.has(key) ? parseProxySetting(raw) : booleans.has(key) ? ['true', 'on', '1'].includes(raw.toLowerCase()) : key === 'customUserAgent' ? raw : Number(raw)
@@ -3340,7 +3369,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 云 API 配置已更新' })
       return
     }
-    throw new Error(`用法：${commandName} api list|can-add|add|remove|config`)
+    throw new Error(usageText(`${commandName} api list`, `${commandName} api can-add`, `${commandName} api add`, `${commandName} api remove`, `${commandName} api config`, `${commandName} api oauth-state`))
   }
 
   private async handleBackup(msg: MessageContext, args: string[]): Promise<void> {
@@ -3377,7 +3406,7 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'enable' || action === 'watch') {
-      if (!args[1] || !['on', 'off'].includes(args[2]?.toLowerCase() || '')) throw new Error(`用法：${commandName} backup ${action} /源目录 on|off`)
+      if (!args[1] || !['on', 'off'].includes(args[2]?.toLowerCase() || '')) throw new Error(usageText(`${commandName} backup ${action} /源目录 on`, `${commandName} backup ${action} /源目录 off`))
       const enabled = args[2].toLowerCase() === 'on'
       const method = action === 'enable' ? 'BackupSetEnabled' : 'BackupSetFileSystemWatchEnabled'
       const result = await this.getClient().unary(method, action === 'enable' ? { sourcePath: normalizePath(args[1]), isEnabled: enabled } : { sourcePath: normalizePath(args[1]), fileSystemWatchEnabled: enabled })
@@ -3386,9 +3415,9 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'destination') {
-      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} backup destination add|remove /源目录 /目标目录`)
+      if (!args[1] || !args[2] || !args[3]) throw new Error(usageText(`${commandName} backup destination add /源目录 /目标目录`, `${commandName} backup destination remove /源目录 /目标目录`))
       const mode = args[1].toLowerCase()
-      if (mode !== 'add' && mode !== 'remove') throw new Error(`用法：${commandName} backup destination add|remove /源目录 /目标目录`)
+      if (mode !== 'add' && mode !== 'remove') throw new Error(usageText(`${commandName} backup destination add /源目录 /目标目录`, `${commandName} backup destination remove /源目录 /目标目录`))
       await this.getClient().unary(mode === 'add' ? 'BackupAddDestination' : 'BackupRemoveDestination', { sourcePath: normalizePath(args[2]), destinationPath: normalizePath(args[3]), destinationEnabled: mode === 'add' })
       await msg.edit({ text: `✅ 备份目标已${mode === 'add' ? '添加' : '删除'}` })
       return
@@ -3418,7 +3447,7 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'strategy') {
-      if (!args[1] || !args[2] || !args[3] || !args[4] || args[5] === undefined) throw new Error(`用法：${commandName} backup strategy /源目录 skip|overwrite|history delete|recycle|keep|history none|source|empty INTERVAL_SECONDS [sync-delete]`)
+      if (!args[1] || !args[2] || !args[3] || !args[4] || args[5] === undefined) throw new Error(`用法：${commandName} backup strategy /源目录 替换策略 删除策略 完成策略 扫描间隔 [sync-delete]`)
       const item = await this.getClient().unary('BackupGetStatus', { value: normalizePath(args[1]) })
       const backup = (item.backup || {}) as RpcResponse
       const replace = { skip: 0, overwrite: 1, history: 2 }[args[2].toLowerCase()]
@@ -3432,7 +3461,7 @@ class Cd2Plugin extends Plugin {
     }
     if (action === 'schedule') {
       const mode = args[1]?.toLowerCase()
-      if (!mode || !args[2]) throw new Error(`用法：${commandName} backup schedule add|clear /源目录 [HH:MM[:SS]] [DAYS]`)
+      if (!mode || !args[2]) throw new Error(usageText(`${commandName} backup schedule add /源目录 [HH:MM[:SS]] [DAYS]`, `${commandName} backup schedule clear /源目录`))
       const item = await this.getClient().unary('BackupGetStatus', { value: normalizePath(args[2]) })
       const backup = (item.backup || {}) as RpcResponse
       if (mode === 'clear') backup.timeSchedules = []
@@ -3442,7 +3471,7 @@ class Cd2Plugin extends Plugin {
         if (hour > 23 || minute > 59 || second > 59) throw new Error('时间超出有效范围')
         const daysOfWeek = args[4] ? args[4].split(',').map(Number) : []
         backup.timeSchedules = [...((backup.timeSchedules || []) as RpcResponse[]), { isEnabled: true, hour, minute, second, daysOfWeek }]
-      } else throw new Error(`用法：${commandName} backup schedule add|clear /源目录 [HH:MM[:SS]] [DAYS]`)
+      } else throw new Error(usageText(`${commandName} backup schedule add /源目录 [HH:MM[:SS]] [DAYS]`, `${commandName} backup schedule clear /源目录`))
       backup.isTimeSchedulesEnabled = ((backup.timeSchedules || []) as RpcResponse[]).length > 0
       await this.getClient().unary('BackupUpdate', backup)
       await msg.edit({ text: `✅ 备份时间计划已${mode === 'add' ? '添加' : '清空'}` })
@@ -3450,20 +3479,20 @@ class Cd2Plugin extends Plugin {
     }
     if (action === 'rule') {
       const mode = args[1]?.toLowerCase()
-      if (!mode || !args[2]) throw new Error(`用法：${commandName} backup rule add|clear /源目录 [ext|name|regex|min VALUE allow|deny file|folder|both]`)
+      if (!mode || !args[2]) throw new Error(usageText(`${commandName} backup rule add /源目录 规则类型 规则值 黑白名单 应用范围`, `${commandName} backup rule clear /源目录`))
       const item = await this.getClient().unary('BackupGetStatus', { value: normalizePath(args[2]) })
       const backup = (item.backup || {}) as RpcResponse
       if (mode === 'clear') backup.fileBackupRules = []
       else if (mode === 'add') {
-        if (!args[3] || args[4] === undefined) throw new Error(`用法：${commandName} backup rule add /源目录 ext|name|regex|min VALUE allow|deny file|folder|both`)
+        if (!args[3] || args[4] === undefined) throw new Error(`用法：${commandName} backup rule add /源目录 规则类型 规则值 黑白名单 应用范围`)
         const kind = { ext: 'extensions', name: 'fileNames', regex: 'regex', min: 'minSize' }[args[3].toLowerCase()]
-        if (!kind) throw new Error('规则类型只支持 ext|name|regex|min')
+        if (!kind) throw new Error('规则类型只支持 ext、name、regex、min')
         const target = args[6]?.toLowerCase() || 'file'
         backup.fileBackupRules = [
           ...((backup.fileBackupRules || []) as RpcResponse[]),
           { kind, value: kind === 'minSize' ? Number(args[4]) : args[4], isEnabled: true, isBlackList: args[5]?.toLowerCase() === 'deny', applyToFolder: target === 'folder' || target === 'both', applyToFile: target === 'file' || target === 'both' }
         ]
-      } else throw new Error(`用法：${commandName} backup rule add|clear ...`)
+      } else throw new Error(usageText(`${commandName} backup rule add /源目录 规则类型 规则值 黑白名单 应用范围`, `${commandName} backup rule clear /源目录`))
       await this.getClient().unary('BackupUpdate', backup)
       await msg.edit({ text: `✅ 备份文件规则已${mode === 'add' ? '添加' : '清空'}` })
       return
@@ -3474,7 +3503,23 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 备份扫描已重新开始' })
       return
     }
-    throw new Error(`用法：${commandName} backup list|can-add|add|update|remove|enable|watch|destination|restart`)
+    throw new Error(
+      usageText(
+        `${commandName} backup list`,
+        `${commandName} backup can-add`,
+        `${commandName} backup add`,
+        `${commandName} backup update`,
+        `${commandName} backup remove`,
+        `${commandName} backup enable`,
+        `${commandName} backup watch`,
+        `${commandName} backup destination`,
+        `${commandName} backup status`,
+        `${commandName} backup strategy`,
+        `${commandName} backup schedule`,
+        `${commandName} backup rule`,
+        `${commandName} backup restart`
+      )
+    )
   }
 
   private async handleRemote(msg: MessageContext, args: string[]): Promise<void> {
@@ -3546,7 +3591,7 @@ class Cd2Plugin extends Plugin {
     }
     if (action === 'control') {
       const operation = args[1]?.toLowerCase()
-      if (!['pause', 'resume', 'cancel'].includes(operation || '') || !args[2]) throw new Error(`用法：${commandName} remote control pause|resume|cancel UPLOAD_ID`)
+      if (!['pause', 'resume', 'cancel'].includes(operation || '') || !args[2]) throw new Error(usageText(`${commandName} remote control pause UPLOAD_ID`, `${commandName} remote control resume UPLOAD_ID`, `${commandName} remote control cancel UPLOAD_ID`))
       await this.getClient().unary('RemoteUploadControl', { uploadId: args[2], action: operation })
       await msg.edit({ text: `✅ 远程上传已${operation === 'pause' ? '暂停' : operation === 'resume' ? '恢复' : '取消'}` })
       return
@@ -3558,9 +3603,9 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'clear') {
-      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} remote clear CLOUD_NAME CLOUD_ACCOUNT_ID all|finished|error|downloading [delete] [PATH]`)
+      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} remote clear CLOUD_NAME CLOUD_ACCOUNT_ID 状态 [delete] [PATH]`)
       const filter = { all: 0, finished: 1, error: 2, downloading: 3 }[args[3].toLowerCase()]
-      if (filter === undefined) throw new Error('筛选只支持 all|finished|error|downloading')
+      if (filter === undefined) throw new Error('筛选只支持 all、finished、error、downloading')
       await this.getClient().unary('ClearOfflineFiles', { cloudName: args[1], cloudAccountId: args[2], filter, deleteFiles: args[4]?.toLowerCase() === 'delete', path: args[5] })
       await msg.edit({ text: '✅ 离线任务已清理' })
       return
@@ -3586,14 +3631,16 @@ class Cd2Plugin extends Plugin {
       return
     }
     if (action === 'remove') {
-      if (!args[1] || !args[2] || args[3]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} remote remove CLOUD_NAME CLOUD_ACCOUNT_ID confirm [HASH...]`)
+      if (!args[1] || !args[2] || args[3]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} remote remove CLOUD_NAME CLOUD_ACCOUNT_ID confirm [哈希值]`)
       const hashes = args.slice(4)
       if (!hashes.length) throw new Error('至少需要一个 infoHash')
       await this.getClient().unary('RemoveOfflineFiles', { cloudName: args[1], cloudAccountId: args[2], deleteFiles: false, infoHashes: hashes })
       await msg.edit({ text: '✅ 远程上传任务已删除' })
       return
     }
-    throw new Error(`用法：${commandName} remote add|list|list-all|remove`)
+    throw new Error(
+      usageText(`${commandName} remote add`, `${commandName} remote list`, `${commandName} remote list-all`, `${commandName} remote remove`, `${commandName} remote upload`, `${commandName} remote control`, `${commandName} remote quota`, `${commandName} remote clear`, `${commandName} remote restart`)
+    )
   }
 
   private async handleSystem(msg: MessageContext, args: string[]): Promise<void> {
@@ -3628,9 +3675,9 @@ class Cd2Plugin extends Plugin {
     if (action === 'set') {
       if (!args[1] || args[2] === undefined) throw new Error(`用法：${commandName} system set KEY VALUE`)
       const spec = SYSTEM_SETTING_FIELDS[args[1]]
-      if (!spec) throw new Error(`未知设置项；支持：${Object.keys(SYSTEM_SETTING_FIELDS).join('|')}`)
-      if (['maxFileLogSizeBytes', 'maxBackupLogSizeBytes', 'maxFileLogFiles', 'maxBackupLogFiles'].includes(args[1])) throw new Error(`日志轮换设置必须整体提交：${commandName} system set-log ...`)
-      if (['backupQueueHighWater', 'backupQueueLowWater', 'maxConcurrentBackupWalkers'].includes(args[1])) throw new Error(`备份资源限制必须整体提交：${commandName} system set-backup-limits ...`)
+      if (!spec) throw new Error(`未知设置项；支持：${Object.keys(SYSTEM_SETTING_FIELDS).join('、')}`)
+      if (['maxFileLogSizeBytes', 'maxBackupLogSizeBytes', 'maxFileLogFiles', 'maxBackupLogFiles'].includes(args[1])) throw new Error(`日志轮换设置必须整体提交，请使用 ${commandName} system set-log 四个参数`)
+      if (['backupQueueHighWater', 'backupQueueLowWater', 'maxConcurrentBackupWalkers'].includes(args[1])) throw new Error(`备份资源限制必须整体提交，请使用 ${commandName} system set-backup-limits 三个参数`)
       const raw = args.slice(2).join(' ')
       const value = spec[1] === 'bool' ? raw.toLowerCase() === 'on' || raw.toLowerCase() === 'true' : spec[1] === 'uint' || spec[1] === 'double' ? Number(raw) : spec[1] === 'list' ? raw.split(',').filter(Boolean) : spec[1] === 'proxy' ? parseProxySetting(raw) : raw
       await this.getClient().unary('SetSystemSettings', { [args[1]]: value })
@@ -3673,7 +3720,7 @@ class Cd2Plugin extends Plugin {
       }
       if (operation === 'eviction') {
         const strategy = { lru: 0, largest: 1, smallest: 2 }[args[2]?.toLowerCase() || '']
-        if (strategy === undefined) throw new Error(`用法：${commandName} system cache eviction lru|largest|smallest`)
+        if (strategy === undefined) throw new Error(usageText(`${commandName} system cache eviction lru`, `${commandName} system cache eviction largest`, `${commandName} system cache eviction smallest`))
         await this.getClient().unary('SetDiskCacheEvictionStrategy', { strategy })
         await msg.edit({ text: '✅ 缓存淘汰策略已更新' })
         return
@@ -3687,19 +3734,19 @@ class Cd2Plugin extends Plugin {
           return
         }
         if (mode === 'set') {
-          if (!args[3]) throw new Error(`用法：${commandName} system cache folder set /路径 [MAX_BYTES] [MIN_BYTES] disabled|include|exclude [EXT,...] on|off`)
+          if (!args[3]) throw new Error(`用法：${commandName} system cache folder set /路径 [最大字节数] [最小字节数] 过滤模式 [扩展名] 开关`)
           const filterMode = { disabled: 0, include: 1, exclude: 2 }[args[6]?.toLowerCase() || 'disabled']
           await this.getClient().unary('SetFolderDiskCache', { path: normalizePath(args[3]), maxFileSize: Number(args[4] || 0), minFileSize: Number(args[5] || 0), extensionFilterMode: filterMode, extensions: (args[7] || '').split(',').filter(Boolean), enabled: args[8]?.toLowerCase() !== 'off' })
           await msg.edit({ text: '✅ 目录缓存规则已保存' })
           return
         }
       }
-      throw new Error(`用法：${commandName} system cache stats|list|purge|eviction|folder`)
+      throw new Error(usageText(`${commandName} system cache stats`, `${commandName} system cache list`, `${commandName} system cache purge`, `${commandName} system cache eviction`, `${commandName} system cache folder`))
     }
     if (action === 'dir-cache') {
       const operation = args[1]?.toLowerCase()
       if (operation === 'set') {
-        if (!args[2]) throw new Error(`用法：${commandName} system dir-cache set /路径 SECONDS|default`)
+        if (!args[2]) throw new Error(usageText(`${commandName} system dir-cache set /路径 秒数`, `${commandName} system dir-cache set /路径 default`))
         await this.getClient().unary('SetDirCacheTimeSecs', { path: normalizePath(args[2]), dirCacheTimeToLiveSecs: args[3]?.toLowerCase() === 'default' || args[3] === undefined ? undefined : Number(args[3]) })
         await msg.edit({ text: '✅ 目录缓存时间已更新' })
         return
@@ -3726,7 +3773,7 @@ class Cd2Plugin extends Plugin {
         await msg.edit({ text: `目录缓存数据库：${formatBytes(result.sizeBytes)}` })
         return
       }
-      throw new Error(`用法：${commandName} system dir-cache set|effective|expire|vacuum|size`)
+      throw new Error(usageText(`${commandName} system dir-cache set`, `${commandName} system dir-cache effective`, `${commandName} system dir-cache expire`, `${commandName} system dir-cache vacuum`, `${commandName} system dir-cache size`))
     }
     if (action === 'table') {
       const operation = args[1]?.toLowerCase()
@@ -3763,7 +3810,7 @@ class Cd2Plugin extends Plugin {
         await msg.edit({ text: htmlText([`<b>🧹 临时文件（${result.count || 0}）</b>`, '', ...(files.length ? files.slice(0, MAX_ITEMS).map((filePath) => `• <code>${htmlEscape(filePath)}</code>`) : ['没有临时文件'])].join('\n')) })
         return
       }
-      throw new Error(`用法：${commandName} system table open [include-dir]|dir|refs /路径|temp`)
+      throw new Error(usageText(`${commandName} system table open [include-dir]`, `${commandName} system table dir`, `${commandName} system table refs /路径`, `${commandName} system table temp`))
     }
     if (action === 'capabilities') {
       const result = await this.getClient().unary('GetServiceCapabilities')
@@ -3772,7 +3819,7 @@ class Cd2Plugin extends Plugin {
     }
     if (action === 'service') {
       const operation = args[1]?.toLowerCase()
-      if (!['restart', 'shutdown', 'update'].includes(operation || '') || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} system service restart|shutdown|update confirm`)
+      if (!['restart', 'shutdown', 'update'].includes(operation || '') || args[2]?.toLowerCase() !== 'confirm') throw new Error(usageText(`${commandName} system service restart confirm`, `${commandName} system service shutdown confirm`, `${commandName} system service update confirm`))
       await msg.edit({ text: `🔄 正在执行服务${operation === 'restart' ? '重启' : operation === 'shutdown' ? '关闭' : '更新'}…` })
       await this.getClient().unary(operation === 'restart' ? 'RestartService' : operation === 'shutdown' ? 'ShutdownService' : 'UpdateSystem')
       return
@@ -3796,7 +3843,7 @@ class Cd2Plugin extends Plugin {
         return
       }
       if (operation === 'set') {
-        if (!args[2] || !args[3] || !['on', 'off'].includes(args[4]?.toLowerCase() || '')) throw new Error(`用法：${commandName} system web set HTTP_PORT HTTPS_PORT on|off [CERT_FILE] [KEY_FILE]`)
+        if (!args[2] || !args[3] || !['on', 'off'].includes(args[4]?.toLowerCase() || '')) throw new Error(`用法：${commandName} system web set HTTP_PORT HTTPS_PORT 开关 [CERT_FILE] [KEY_FILE]`)
         await this.getClient().unary('SetWebServerConfig', { httpPort: Number(args[2]), httpsPort: Number(args[3]), enableHttps: args[4].toLowerCase() === 'on', certFile: args[5], keyFile: args[6] })
         await msg.edit({ text: '✅ Web 服务配置已更新' })
         return
@@ -3808,7 +3855,19 @@ class Cd2Plugin extends Plugin {
         return
       }
     }
-    throw new Error(`用法：${commandName} system runtime|settings|set|cache|dir-cache|capabilities|service|web`)
+    throw new Error(
+      usageText(
+        `${commandName} system runtime`,
+        `${commandName} system settings`,
+        `${commandName} system set`,
+        `${commandName} system cache`,
+        `${commandName} system dir-cache`,
+        `${commandName} system table`,
+        `${commandName} system capabilities`,
+        `${commandName} system service`,
+        `${commandName} system web`
+      )
+    )
   }
 
   private async handleDav(msg: MessageContext, args: string[]): Promise<void> {
@@ -3850,7 +3909,7 @@ class Cd2Plugin extends Plugin {
     }
     if (action === 'account') {
       const accountAction = args[1]?.toLowerCase()
-      if (accountAction !== 'on' && accountAction !== 'off') throw new Error(`用法：${commandName} dav account on|off [/根目录]`)
+      if (accountAction !== 'on' && accountAction !== 'off') throw new Error(usageText(`${commandName} dav account on [/根目录]`, `${commandName} dav account off [/根目录]`))
       if (accountAction === 'on' && (!config.accountUsername || !config.accountPassword)) throw new Error(`请先配置 CloudDrive 账户：${commandName} conf account USER PASSWORD`)
       const rootPath = args[2] ? normalizePath(args[2]) : config.webdavRoot
       const serverEnabled = accountAction === 'on' ? true : Boolean((await this.getClient().unary('GetDavServerConfig')).davServerEnabled)
@@ -3909,7 +3968,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: `✅ WebDAV 用户 <code>${htmlEscape(args[1])}</code> 已删除` })
       return
     }
-    throw new Error(`用法：${commandName} dav status|on|off|account|ls|mkdir|rm|add|remove`)
+    throw new Error(usageText(`${commandName} dav status`, `${commandName} dav on`, `${commandName} dav off`, `${commandName} dav account`, `${commandName} dav ls`, `${commandName} dav mkdir`, `${commandName} dav rm`, `${commandName} dav add`, `${commandName} dav remove`))
   }
 
   private async handleUpload(msg: MessageContext, args: string[]): Promise<void> {
@@ -3973,10 +4032,8 @@ class Cd2Plugin extends Plugin {
       try {
         const args = tokenize(msg.text).slice(1)
         const subcommand = args[0]?.toLowerCase()
-        if (!subcommand) {
-          await msg.edit({ text: htmlText('请使用 <code>.h cd2</code> 查看 CloudDrive2 帮助'), disableWebPreview: true })
-        } else if (subcommand === 'h') {
-          throw new Error('不再支持 .cd2 h，请使用 .h cd2 查看帮助')
+        if (!subcommand || subcommand === 'h') {
+          return
         } else if (subcommand === 'conf') {
           await this.handleConfig(msg, args.slice(1))
         } else if (subcommand === 'collapse') {
