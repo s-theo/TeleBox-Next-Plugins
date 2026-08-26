@@ -68,7 +68,6 @@ const helpSections: HelpSection[] = [
   {
     title: '基础与配置',
     lines: [
-      `${commandName} h — 查看全部命令说明`,
       `${commandName} collapse — 查看原生折叠开关状态`,
       `${commandName} collapse on — 开启 Telegram 原生折叠`,
       `${commandName} collapse off — 关闭 Telegram 原生折叠`,
@@ -301,9 +300,8 @@ const buildHelpMessages = (collapse: boolean): string[] =>
           .split(/\s+/)
           .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
           .join(' ')
-        return `${command} — ${description}`
+        return `<code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
       })
-      .map((line) => htmlEscape(line))
       .map((line) => `• ${line}`)
       .join('\n')
     return `<b>☁️ ${htmlEscape(title)}</b>\n${collapse ? `<blockquote expandable>${body}</blockquote>` : body}`
