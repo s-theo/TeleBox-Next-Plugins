@@ -289,22 +289,31 @@ const helpSections: HelpSection[] = [
   }
 ]
 
+const HELP_LINES_PER_MESSAGE = 20
+
 const buildHelpMessages = (collapse: boolean): string[] =>
-  helpSections.map(({ title, lines }) => {
-    const body = lines
-      .map((line) => {
-        const separator = line.indexOf(' — ')
-        const rawCommand = separator >= 0 ? line.slice(0, separator) : line
-        const description = separator >= 0 ? line.slice(separator + 3) : ''
-        const command = rawCommand
-          .split(/\s+/)
-          .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
-          .join(' ')
-        return `<code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
-      })
-      .map((line) => `• ${line}`)
-      .join('\n')
-    return `<b>☁️ ${htmlEscape(title)}</b>\n${collapse ? `<blockquote expandable>${body}</blockquote>` : body}`
+  helpSections.flatMap(({ title, lines }) => {
+    const messages: string[] = []
+    for (let offset = 0; offset < lines.length; offset += HELP_LINES_PER_MESSAGE) {
+      const part = lines.slice(offset, offset + HELP_LINES_PER_MESSAGE)
+      const page = Math.floor(offset / HELP_LINES_PER_MESSAGE) + 1
+      const pageTitle = lines.length > HELP_LINES_PER_MESSAGE ? `${title}（${page}）` : title
+      const body = part
+        .map((line) => {
+          const separator = line.indexOf(' — ')
+          const rawCommand = separator >= 0 ? line.slice(0, separator) : line
+          const description = separator >= 0 ? line.slice(separator + 3) : ''
+          const command = rawCommand
+            .split(/\s+/)
+            .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
+            .join(' ')
+          return `<code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
+        })
+        .map((line) => `• ${line}`)
+        .join('\n')
+      messages.push(`<b>☁️ ${htmlEscape(pageTitle)}</b>\n${collapse ? `<blockquote expandable>${body}</blockquote>` : body}`)
+    }
+    return messages
   })
 
 const helpText = buildHelpMessages(true).join('\n\n')
