@@ -72,7 +72,7 @@ const formatHelpLine = (line: string): string => {
     .split(/\s+/)
     .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
     .join(' ')
-  return `• <code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
+  return `<code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
 }
 
 const helpSections: HelpSection[] = [
@@ -304,7 +304,7 @@ const buildHelpBody = (): string => helpSections.map(({ title, lines }) => `<b>�
 
 const buildHelpDescription = (collapse: boolean): string => {
   const body = buildHelpBody()
-  return collapse ? `<blockquote expandable>${body}</blockquote>` : body
+  return collapse ? `<blockquote expandable>\n${body}\n</blockquote>` : body
 }
 
 const htmlText = (text: string): string => html(text)
