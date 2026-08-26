@@ -87,23 +87,24 @@ type HelpMergeGroup = { prefix: string; variants: string[]; description: string 
 
 const helpMergeGroups = (prefix: string): HelpMergeGroup[] => [
   { prefix: `${prefix} collapse`, variants: ['on', 'off'], description: '开启或关闭原生折叠' },
-  { prefix: `${prefix} 2fa`, variants: ['status', 'setup', 'enable', 'disable'], description: '查看或设置两步验证' },
-  { prefix: `${prefix} 2fa`, variants: ['recovery', 'regenerate'], description: '查看或重新生成恢复码' },
-  { prefix: `${prefix} 2fa`, variants: ['login', 'send-disable-email', 'disable-email', 'unbind'], description: '登录或管理两步验证设备' },
+  { prefix: `${prefix} conf`, variants: ['show', 'endpoint', 'account', 'token', 'path', 'dav-url', 'dav-user', 'dav-root'], description: '查看或设置连接、账户、Token、默认路径和 WebDAV 配置' },
+  { prefix: `${prefix}`, variants: ['login', 'status', 'check', 'tasks'], description: '登录、查看状态、检查连接和任务统计' },
+  { prefix: `${prefix} 2fa`, variants: ['status', 'setup', 'enable', 'disable', 'recovery', 'regenerate', 'login', 'send-disable-email', 'disable-email', 'unbind'], description: '查看、设置、登录或关闭两步验证' },
   { prefix: `${prefix} account`, variants: ['status', 'logout'], description: '查看或退出账户' },
   { prefix: `${prefix} account`, variants: ['reset-email', 'reset'], description: '重置账户密码' },
   { prefix: `${prefix} account`, variants: ['delete-email', 'delete'], description: '发送注销邮件或注销账户' },
-  { prefix: `${prefix} session`, variants: ['revoke', 'revoke-others'], description: '撤销登录会话' },
-  { prefix: `${prefix} token`, variants: ['show', 'clear'], description: '查看或清除当前 Token' },
-  { prefix: `${prefix} token`, variants: ['list', 'info'], description: '查看 Token 列表或详情' },
-  { prefix: `${prefix} token`, variants: ['create', 'modify', 'remove'], description: '创建、修改或删除 Token' },
+  { prefix: `${prefix} session`, variants: ['list', 'revoke', 'revoke-others'], description: '列出或撤销登录会话' },
+  { prefix: `${prefix} token`, variants: ['show', 'clear', 'login', 'list', 'info', 'create', 'modify', 'remove'], description: '查看、登录、创建、修改或删除 Token' },
   { prefix: `${prefix} file`, variants: ['detail', 'meta', 'original'], description: '查看文件详情、元数据或原始路径' },
+  { prefix: `${prefix}`, variants: ['ls', 'find', 'grep', 'df'], description: '浏览、查找、搜索或统计文件' },
+  { prefix: `${prefix}`, variants: ['mkdir', 'rename', 'mv', 'cp', 'rm'], description: '创建、重命名、移动、复制或删除文件' },
   { prefix: `${prefix} mount`, variants: ['list', 'can-add'], description: '查看挂载点或添加配额' },
   { prefix: `${prefix} dav`, variants: ['status', 'on', 'off'], description: '查看状态或开关 WebDAV' },
   { prefix: `${prefix} dav account`, variants: ['on', 'off'], description: '开关 WebDAV 账户模式' },
   { prefix: `${prefix} mount`, variants: ['mount', 'unmount'], description: '挂载或卸载挂载点' },
   { prefix: `${prefix} transfer`, variants: ['status', 'downloads', 'uploads'], description: '查看任务统计或下载上传任务' },
   { prefix: `${prefix} transfer`, variants: ['copies', 'merges'], description: '查看复制或合并任务' },
+  { prefix: `${prefix} transfer`, variants: ['pause all', 'resume all', 'cancel all'], description: '暂停、恢复或取消全部任务' },
   { prefix: `${prefix} transfer`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消任务' },
   { prefix: `${prefix} transfer copy`, variants: ['pause', 'resume', 'cancel', 'restart'], description: '控制指定复制任务' },
   { prefix: `${prefix} transfer copy`, variants: ['pause-all', 'resume-all', 'remove-completed', 'remove-all'], description: '批量控制或清理复制任务' },
@@ -118,7 +119,7 @@ const helpMergeGroups = (prefix: string): HelpMergeGroup[] => [
   { prefix: `${prefix} api`, variants: ['list', 'can-add'], description: '查看云盘列表或添加配额' },
   { prefix: `${prefix} api add`, variants: ['baidu-oauth', 'onedrive-oauth'], description: '添加百度网盘或 OneDrive' },
   { prefix: `${prefix} api config`, variants: ['get', 'set'], description: '查看或修改云 API 配置' },
-  { prefix: `${prefix} api discover-smb`, variants: ['servers', 'shares'], description: '发现 SMB 服务器或共享' },
+  { prefix: `${prefix} api`, variants: ['discover-smb', 'discover-smb-shares'], description: '发现 SMB 服务器或共享目录' },
   { prefix: `${prefix} backup`, variants: ['enable', 'watch'], description: '开关备份任务或文件监听' },
   { prefix: `${prefix} backup`, variants: ['list', 'can-add'], description: '查看备份列表或添加配额' },
   { prefix: `${prefix} backup`, variants: ['status', 'restart'], description: '查看状态或重新扫描备份' },
@@ -129,10 +130,10 @@ const helpMergeGroups = (prefix: string): HelpMergeGroup[] => [
   { prefix: `${prefix} remote control`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消远程上传' },
   { prefix: `${prefix} remote`, variants: ['add', 'list', 'list-all'], description: '创建或查看离线任务' },
   { prefix: `${prefix} remote`, variants: ['quota', 'clear', 'restart'], description: '查询、清理或重启离线任务' },
-  { prefix: `${prefix} system cache`, variants: ['stats', 'list', 'purge'], description: '查看或清理磁盘缓存' },
+  { prefix: `${prefix} system cache`, variants: ['stats', 'list', 'purge', 'eviction'], description: '查看、清理或设置磁盘缓存' },
   { prefix: `${prefix} system cache folder`, variants: ['set', 'remove'], description: '设置或删除缓存目录规则' },
   { prefix: `${prefix} system dir-cache`, variants: ['set', 'effective', 'expire', 'vacuum', 'size'], description: '管理目录缓存' },
-  { prefix: `${prefix} system`, variants: ['runtime', 'settings', 'capabilities'], description: '查看运行信息、设置或服务能力' },
+  { prefix: `${prefix} system`, variants: ['runtime', 'settings', 'capabilities', 'set', 'set-log', 'set-backup-limits'], description: '查看或修改系统、日志、备份资源和服务能力' },
   { prefix: `${prefix} system table`, variants: ['open', 'dir', 'refs', 'temp'], description: '查看系统文件表' },
   { prefix: `${prefix} system service`, variants: ['restart', 'shutdown', 'update'], description: '重启、关闭或更新服务' },
   { prefix: `${prefix} system web`, variants: ['get', 'set', 'self-cert'], description: '查看或修改 Web 服务' },
@@ -384,7 +385,7 @@ const helpSections: HelpSection[] = [
   }
 ]
 
-const buildHelpBody = (): string => helpSections.map((section) => `<blockquote expandable>\n${buildHelpSection(section)}\n</blockquote>`).join('\n\n')
+const buildHelpBody = (): string => helpSections.map((section) => `<blockquote expandable>\n${buildHelpSection(section)}\n</blockquote>`).join('\n<b></b>\n')
 
 const buildHelpDescription = (collapse: boolean): string => {
   if (!collapse) return helpSections.map(buildHelpSection).join('\n\n')
