@@ -75,7 +75,7 @@ const parseHelpLine = (line: string): { rawCommand: string; description: string 
 const helpCommand = (rawCommand: string): string =>
   rawCommand
     .split(/\s+/)
-    .filter((token, index) => index === 0 || /^[a-z0-9][a-z0-9-]*$/.test(token))
+    .filter((token, index) => index === 0 || (token !== 'confirm' && /^[a-z0-9][a-z0-9-]*$/.test(token)))
     .join(' ')
 
 const formatHelpLine = (line: string): string => {
@@ -86,9 +86,24 @@ const formatHelpLine = (line: string): string => {
 type HelpMergeGroup = { prefix: string; variants: string[]; description: string }
 
 const helpMergeGroups = (prefix: string): HelpMergeGroup[] => [
+  { prefix: `${prefix} collapse`, variants: ['on', 'off'], description: '开启或关闭原生折叠' },
+  { prefix: `${prefix} 2fa`, variants: ['status', 'setup', 'enable', 'disable'], description: '查看或设置两步验证' },
+  { prefix: `${prefix} 2fa`, variants: ['recovery', 'regenerate'], description: '查看或重新生成恢复码' },
+  { prefix: `${prefix} 2fa`, variants: ['login', 'send-disable-email', 'disable-email', 'unbind'], description: '登录或管理两步验证设备' },
+  { prefix: `${prefix} account`, variants: ['status', 'logout'], description: '查看或退出账户' },
+  { prefix: `${prefix} account`, variants: ['reset-email', 'reset'], description: '重置账户密码' },
+  { prefix: `${prefix} account`, variants: ['delete-email', 'delete'], description: '发送注销邮件或注销账户' },
+  { prefix: `${prefix} session`, variants: ['revoke', 'revoke-others'], description: '撤销登录会话' },
+  { prefix: `${prefix} token`, variants: ['show', 'clear'], description: '查看或清除当前 Token' },
+  { prefix: `${prefix} token`, variants: ['list', 'info'], description: '查看 Token 列表或详情' },
+  { prefix: `${prefix} token`, variants: ['create', 'modify', 'remove'], description: '创建、修改或删除 Token' },
+  { prefix: `${prefix} file`, variants: ['detail', 'meta', 'original'], description: '查看文件详情、元数据或原始路径' },
+  { prefix: `${prefix} mount`, variants: ['list', 'can-add'], description: '查看挂载点或添加配额' },
   { prefix: `${prefix} dav`, variants: ['status', 'on', 'off'], description: '查看状态或开关 WebDAV' },
   { prefix: `${prefix} dav account`, variants: ['on', 'off'], description: '开关 WebDAV 账户模式' },
   { prefix: `${prefix} mount`, variants: ['mount', 'unmount'], description: '挂载或卸载挂载点' },
+  { prefix: `${prefix} transfer`, variants: ['status', 'downloads', 'uploads'], description: '查看任务统计或下载上传任务' },
+  { prefix: `${prefix} transfer`, variants: ['copies', 'merges'], description: '查看复制或合并任务' },
   { prefix: `${prefix} transfer`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消任务' },
   { prefix: `${prefix} transfer copy`, variants: ['pause', 'resume', 'cancel', 'restart'], description: '控制指定复制任务' },
   { prefix: `${prefix} transfer copy`, variants: ['pause-all', 'resume-all', 'remove-completed', 'remove-all'], description: '批量控制或清理复制任务' },
@@ -99,19 +114,31 @@ const helpMergeGroups = (prefix: string): HelpMergeGroup[] => [
   { prefix: `${prefix} api add`, variants: ['google-oauth', 'google-refresh'], description: '添加 Google Drive' },
   { prefix: `${prefix} api add`, variants: ['xunlei-oauth', 'xunlei-open'], description: '添加迅雷云盘' },
   { prefix: `${prefix} api add`, variants: ['guangya-oauth', 'guangya-qrcode'], description: '添加光鸭云盘' },
+  { prefix: `${prefix} api add`, variants: ['webdav', 'local', 'pikpak'], description: '添加 WebDAV、本地目录或 PikPak' },
+  { prefix: `${prefix} api`, variants: ['list', 'can-add'], description: '查看云盘列表或添加配额' },
+  { prefix: `${prefix} api add`, variants: ['baidu-oauth', 'onedrive-oauth'], description: '添加百度网盘或 OneDrive' },
   { prefix: `${prefix} api config`, variants: ['get', 'set'], description: '查看或修改云 API 配置' },
   { prefix: `${prefix} api discover-smb`, variants: ['servers', 'shares'], description: '发现 SMB 服务器或共享' },
   { prefix: `${prefix} backup`, variants: ['enable', 'watch'], description: '开关备份任务或文件监听' },
+  { prefix: `${prefix} backup`, variants: ['list', 'can-add'], description: '查看备份列表或添加配额' },
+  { prefix: `${prefix} backup`, variants: ['status', 'restart'], description: '查看状态或重新扫描备份' },
+  { prefix: `${prefix} backup`, variants: ['add', 'update', 'remove'], description: '添加、更新或删除备份' },
   { prefix: `${prefix} backup destination`, variants: ['add', 'remove'], description: '添加或删除备份目标' },
   { prefix: `${prefix} backup schedule`, variants: ['add', 'clear'], description: '添加或清空时间计划' },
   { prefix: `${prefix} backup rule`, variants: ['add', 'clear'], description: '添加或清空文件规则' },
   { prefix: `${prefix} remote control`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消远程上传' },
+  { prefix: `${prefix} remote`, variants: ['add', 'list', 'list-all'], description: '创建或查看离线任务' },
+  { prefix: `${prefix} remote`, variants: ['quota', 'clear', 'restart'], description: '查询、清理或重启离线任务' },
   { prefix: `${prefix} system cache`, variants: ['stats', 'list', 'purge'], description: '查看或清理磁盘缓存' },
   { prefix: `${prefix} system cache folder`, variants: ['set', 'remove'], description: '设置或删除缓存目录规则' },
   { prefix: `${prefix} system dir-cache`, variants: ['set', 'effective', 'expire', 'vacuum', 'size'], description: '管理目录缓存' },
+  { prefix: `${prefix} system`, variants: ['runtime', 'settings', 'capabilities'], description: '查看运行信息、设置或服务能力' },
   { prefix: `${prefix} system table`, variants: ['open', 'dir', 'refs', 'temp'], description: '查看系统文件表' },
   { prefix: `${prefix} system service`, variants: ['restart', 'shutdown', 'update'], description: '重启、关闭或更新服务' },
-  { prefix: `${prefix} system web`, variants: ['get', 'set', 'self-cert'], description: '查看或修改 Web 服务' }
+  { prefix: `${prefix} system web`, variants: ['get', 'set', 'self-cert'], description: '查看或修改 Web 服务' },
+  { prefix: `${prefix} mount`, variants: ['add', 'update', 'remove'], description: '添加、修改或删除挂载点' },
+  { prefix: `${prefix} dav`, variants: ['ls', 'mkdir'], description: '列出或创建 WebDAV 目录' },
+  { prefix: `${prefix} dav`, variants: ['rm', 'add', 'remove'], description: '删除路径或管理 WebDAV 用户' }
 ]
 
 const buildHelpSection = ({ title, lines }: HelpSection): string => {
