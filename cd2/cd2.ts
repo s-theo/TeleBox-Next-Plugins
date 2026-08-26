@@ -64,17 +64,74 @@ const MAX_MESSAGE_LENGTH = 3800
 
 type HelpSection = { title: string; lines: string[] }
 
-const formatHelpLine = (line: string): string => {
+const parseHelpLine = (line: string): { rawCommand: string; description: string } => {
   const separator = line.indexOf(' — ')
-  const rawCommand = separator >= 0 ? line.slice(0, separator) : line
-  const description = separator >= 0 ? line.slice(separator + 3) : ''
-  const command = rawCommand
-    .split(/\s+/)
-    .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
-    .join(' ')
-  return `<code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
+  return {
+    rawCommand: separator >= 0 ? line.slice(0, separator) : line,
+    description: separator >= 0 ? line.slice(separator + 3) : ''
+  }
 }
 
+const helpCommand = (rawCommand: string): string =>
+  rawCommand
+    .split(/\s+/)
+    .filter((token, index) => index === 0 || /^[a-z0-9][a-z0-9-]*$/.test(token))
+    .join(' ')
+
+const formatHelpLine = (line: string): string => {
+  const { rawCommand, description } = parseHelpLine(line)
+  return `<code>${htmlEscape(helpCommand(rawCommand))}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
+}
+
+type HelpMergeGroup = { prefix: string; variants: string[]; description: string }
+
+const helpMergeGroups = (prefix: string): HelpMergeGroup[] => [
+  { prefix: `${prefix} dav`, variants: ['status', 'on', 'off'], description: '查看状态或开关 WebDAV' },
+  { prefix: `${prefix} dav account`, variants: ['on', 'off'], description: '开关 WebDAV 账户模式' },
+  { prefix: `${prefix} mount`, variants: ['mount', 'unmount'], description: '挂载或卸载挂载点' },
+  { prefix: `${prefix} transfer`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消任务' },
+  { prefix: `${prefix} transfer copy`, variants: ['pause', 'resume', 'cancel', 'restart'], description: '控制指定复制任务' },
+  { prefix: `${prefix} transfer copy`, variants: ['pause-all', 'resume-all', 'remove-completed', 'remove-all'], description: '批量控制或清理复制任务' },
+  { prefix: `${prefix} api add`, variants: ['s3', 'sftp', 'ftp', 'smb'], description: '添加 S3、SFTP、FTP 或 SMB' },
+  { prefix: `${prefix} api add`, variants: ['115-open', '115-open-qrcode'], description: '添加 115 Open 云盘' },
+  { prefix: `${prefix} api add`, variants: ['115-cookie', '115-qrcode'], description: '添加 115 云盘' },
+  { prefix: `${prefix} api add`, variants: ['aliyun-oauth', 'aliyun-refresh', 'aliyun-qrcode'], description: '添加阿里云盘' },
+  { prefix: `${prefix} api add`, variants: ['google-oauth', 'google-refresh'], description: '添加 Google Drive' },
+  { prefix: `${prefix} api add`, variants: ['xunlei-oauth', 'xunlei-open'], description: '添加迅雷云盘' },
+  { prefix: `${prefix} api add`, variants: ['guangya-oauth', 'guangya-qrcode'], description: '添加光鸭云盘' },
+  { prefix: `${prefix} api config`, variants: ['get', 'set'], description: '查看或修改云 API 配置' },
+  { prefix: `${prefix} api discover-smb`, variants: ['servers', 'shares'], description: '发现 SMB 服务器或共享' },
+  { prefix: `${prefix} backup`, variants: ['enable', 'watch'], description: '开关备份任务或文件监听' },
+  { prefix: `${prefix} backup destination`, variants: ['add', 'remove'], description: '添加或删除备份目标' },
+  { prefix: `${prefix} backup schedule`, variants: ['add', 'clear'], description: '添加或清空时间计划' },
+  { prefix: `${prefix} backup rule`, variants: ['add', 'clear'], description: '添加或清空文件规则' },
+  { prefix: `${prefix} remote control`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消远程上传' },
+  { prefix: `${prefix} system cache`, variants: ['stats', 'list', 'purge'], description: '查看或清理磁盘缓存' },
+  { prefix: `${prefix} system cache folder`, variants: ['set', 'remove'], description: '设置或删除缓存目录规则' },
+  { prefix: `${prefix} system dir-cache`, variants: ['set', 'effective', 'expire', 'vacuum', 'size'], description: '管理目录缓存' },
+  { prefix: `${prefix} system table`, variants: ['open', 'dir', 'refs', 'temp'], description: '查看系统文件表' },
+  { prefix: `${prefix} system service`, variants: ['restart', 'shutdown', 'update'], description: '重启、关闭或更新服务' },
+  { prefix: `${prefix} system web`, variants: ['get', 'set', 'self-cert'], description: '查看或修改 Web 服务' }
+]
+
+const buildHelpSection = ({ title, lines }: HelpSection): string => {
+  const remaining = new Map(lines.map((line) => [helpCommand(parseHelpLine(line).rawCommand), line]))
+  const output: string[] = []
+  for (const group of helpMergeGroups(commandName)) {
+    const matched = group.variants.map((variant) => `${group.prefix} ${variant}`).filter((command) => remaining.has(command))
+    if (matched.length < 2) continue
+    for (const command of matched) remaining.delete(command)
+    output.push(`<code>${htmlEscape(`${group.prefix} ${group.variants.filter((variant) => matched.includes(`${group.prefix} ${variant}`)).join('|')}`)}</code> — ${htmlEscape(group.description)}`)
+  }
+  for (const line of lines) {
+    const command = helpCommand(parseHelpLine(line).rawCommand)
+    if (remaining.has(command)) {
+      output.push(formatHelpLine(line))
+      remaining.delete(command)
+    }
+  }
+  return `<b>☁️ ${htmlEscape(title)}</b>\n${output.join('\n')}`
+}
 const helpSections: HelpSection[] = [
   {
     title: '基础配置',
@@ -299,8 +356,6 @@ const helpSections: HelpSection[] = [
     ]
   }
 ]
-
-const buildHelpSection = ({ title, lines }: HelpSection): string => `<b>☁️ ${htmlEscape(title)}</b>\n${lines.map(formatHelpLine).join('\n')}`
 
 const buildHelpBody = (): string => helpSections.map((section) => `<blockquote expandable>\n${buildHelpSection(section)}\n</blockquote>`).join('\n\n')
 
