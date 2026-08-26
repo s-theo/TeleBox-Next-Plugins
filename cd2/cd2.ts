@@ -39,6 +39,7 @@ interface Cd2Config {
   webdavUsername: string
   webdavPassword: string
   webdavRoot: string
+  collapse: boolean
 }
 
 type Db = Low<Cd2Config>
@@ -61,71 +62,248 @@ const REQUEST_TIMEOUT = 20_000
 const MAX_ITEMS = 40
 const MAX_MESSAGE_LENGTH = 3800
 
-const helpText = `
-<b>☁️ CloudDrive2 管理</b>
+type HelpSection = { title: string; lines: string[] }
 
-<b>账户与安全</b>
-• <code>${commandName} account status|logout|reset-email|reset</code> 查看、退出或重置账户
-• <code>${commandName} account delete-email|delete ... confirm</code> 发送注销邮件并确认注销账户
-• <code>${commandName} 2fa status|setup|enable|disable</code> 查看、设置、启用或关闭两步验证
-• <code>${commandName} 2fa recovery|regenerate</code> 查看或重新生成恢复码；<code>login</code> 使用 TOTP 登录
-• <code>${commandName} 2fa send-disable-email|disable-email|unbind</code> 邮件关闭 2FA 或解绑当前设备
-• <code>${commandName} session list|revoke|revoke-others</code> 查看或撤销会话
-• <code>${commandName} token show|list|info</code> 查看当前配置 Token、Token 列表或 Token 详情（输出脱敏）
-• <code>${commandName} token create|modify|remove</code> 创建、修改或删除 API Token
+const helpSections: HelpSection[] = [
+  {
+    title: '基础与配置',
+    lines: [
+      `${commandName} h — 查看全部命令说明`,
+      `${commandName} collapse — 查看原生折叠开关状态`,
+      `${commandName} collapse on — 开启 Telegram 原生折叠`,
+      `${commandName} collapse off — 关闭 Telegram 原生折叠`,
+      `${commandName} conf show — 查看配置，敏感值自动脱敏`,
+      `${commandName} conf endpoint URL — 设置 CloudDrive2 地址`,
+      `${commandName} conf account USER PASSWORD — 设置账户登录信息`,
+      `${commandName} conf token TOKEN — 设置 API Token`,
+      `${commandName} conf path PATH — 设置默认路径`,
+      `${commandName} conf dav-url URL — 设置 WebDAV 地址`,
+      `${commandName} conf dav-user USER PASSWORD — 设置 WebDAV 用户`,
+      `${commandName} conf dav-root PATH — 设置 WebDAV 根目录`,
+      `${commandName} login — 使用已配置账户登录并获取 Token`,
+      `${commandName} status — 查看插件配置和连接状态`,
+      `${commandName} check — 验证 CloudDrive2 连接`,
+      `${commandName} tasks — 查看任务总数`
+    ]
+  },
+  {
+    title: '账户、2FA、会话与 Token',
+    lines: [
+      `${commandName} account register USER PASSWORD — 注册账户`,
+      `${commandName} account status — 查看账户状态`,
+      `${commandName} account logout — 退出并清除本地登录`,
+      `${commandName} account reset-email EMAIL — 发送密码重置邮件`,
+      `${commandName} account reset CODE NEW_PASSWORD — 执行密码重置`,
+      `${commandName} account delete-email — 发送账户注销邮件`,
+      `${commandName} account delete CODE PASSWORD confirm — 注销账户`,
+      `${commandName} 2fa status — 查看两步验证状态`,
+      `${commandName} 2fa setup PASSWORD — 创建两步验证密钥`,
+      `${commandName} 2fa enable TOTP_CODE — 启用两步验证`,
+      `${commandName} 2fa disable TOTP_CODE — 关闭两步验证`,
+      `${commandName} 2fa recovery — 查看恢复码`,
+      `${commandName} 2fa regenerate — 重新生成恢复码`,
+      `${commandName} 2fa login USER PASSWORD TOTP_CODE — 使用 TOTP 登录`,
+      `${commandName} 2fa send-disable-email EMAIL — 发送关闭 2FA 邮件`,
+      `${commandName} 2fa disable-email CODE PASSWORD — 用邮件验证码关闭 2FA`,
+      `${commandName} 2fa unbind PASSWORD TOTP_CODE — 解绑当前设备`,
+      `${commandName} session list — 查看登录会话`,
+      `${commandName} session revoke SESSION_ID confirm — 撤销指定会话`,
+      `${commandName} session revoke-others confirm — 撤销其他会话`,
+      `${commandName} token show — 查看当前 Token（脱敏）`,
+      `${commandName} token clear — 清除本地 Token`,
+      `${commandName} token login USER PASSWORD — 账户登录获取 Token`,
+      `${commandName} token list — 列出 API Token（脱敏）`,
+      `${commandName} token info TOKEN — 查看 Token 详情（脱敏）`,
+      `${commandName} token create NAME ROOT PERMISSION — 创建 API Token`,
+      `${commandName} token modify TOKEN KEY=VALUE — 修改 API Token`,
+      `${commandName} token remove TOKEN confirm — 删除 API Token`
+    ]
+  },
+  {
+    title: '文件与下载上传',
+    lines: [
+      `${commandName} ls PATH — 浏览目录`,
+      `${commandName} find PATH — 按路径查找文件`,
+      `${commandName} grep KEYWORD PATH — 搜索文件内容`,
+      `${commandName} df PATH — 查看空间使用情况`,
+      `${commandName} file detail PATH — 查看文件详情`,
+      `${commandName} file meta PATH — 查看文件元数据`,
+      `${commandName} file original PATH — 查看文件原始路径`,
+      `${commandName} mkdir PARENT NAME — 创建文件夹`,
+      `${commandName} rename FILE NEW_NAME — 重命名文件`,
+      `${commandName} mv SOURCE DEST — 移动文件`,
+      `${commandName} cp SOURCE DEST — 复制文件`,
+      `${commandName} rm PATH confirm — 删除文件或文件夹`,
+      `${commandName} dl FILE — 下载文件并替换当前命令消息`,
+      `${commandName} up PATH — 回复 Telegram 文件后上传到 WebDAV`,
+      `${commandName} mount list — 列出挂载点`,
+      `${commandName} mount can-add — 检查挂载点配额`,
+      `${commandName} mount add MOUNT SOURCE — 添加挂载点`,
+      `${commandName} mount update MOUNT SOURCE — 修改挂载点`,
+      `${commandName} mount mount MOUNT — 挂载挂载点`,
+      `${commandName} mount unmount MOUNT — 卸载挂载点`,
+      `${commandName} mount remove MOUNT confirm — 删除挂载点`
+    ]
+  },
+  {
+    title: '传输任务',
+    lines: [
+      `${commandName} transfer status — 查看任务统计`,
+      `${commandName} transfer downloads PAGE — 查看下载任务`,
+      `${commandName} transfer uploads PAGE — 查看上传任务`,
+      `${commandName} transfer copies — 查看复制/移动任务`,
+      `${commandName} transfer merges — 查看合并任务`,
+      `${commandName} transfer pause all — 暂停全部下载/上传任务`,
+      `${commandName} transfer resume all — 恢复全部下载/上传任务`,
+      `${commandName} transfer cancel all — 取消全部下载/上传任务`,
+      `${commandName} transfer pause KEY — 暂停指定下载/上传任务`,
+      `${commandName} transfer resume KEY — 恢复指定下载/上传任务`,
+      `${commandName} transfer cancel KEY — 取消指定下载/上传任务`,
+      `${commandName} transfer copy pause KEY — 暂停复制任务`,
+      `${commandName} transfer copy resume KEY — 恢复复制任务`,
+      `${commandName} transfer copy cancel SOURCE DEST — 取消复制任务`,
+      `${commandName} transfer copy restart SOURCE DEST — 重启复制任务`,
+      `${commandName} transfer copy pause-all — 暂停全部复制任务`,
+      `${commandName} transfer copy resume-all — 恢复全部复制任务`,
+      `${commandName} transfer copy remove KEY — 删除复制任务记录`,
+      `${commandName} transfer copy remove-completed — 清理已完成复制任务`,
+      `${commandName} transfer copy remove-all — 清理全部复制任务`,
+      `${commandName} transfer merge cancel SOURCE DEST — 取消合并任务`
+    ]
+  },
+  {
+    title: 'Cloud API',
+    lines: [
+      `${commandName} api list — 列出已配置云盘`,
+      `${commandName} api can-add — 检查云盘添加配额`,
+      `${commandName} api remove CLOUD USER confirm — 删除云盘配置`,
+      `${commandName} api config get CLOUD USER — 查看云 API 配置`,
+      `${commandName} api config set CLOUD USER KEY VALUE — 修改云 API 配置`,
+      `${commandName} api add webdav URL USER PASSWORD — 添加 WebDAV`,
+      `${commandName} api add local PATH — 添加本地目录`,
+      `${commandName} api add pikpak USER PASSWORD — 添加 PikPak`,
+      `${commandName} api add 115-cookie COOKIE — 添加 115 Cookie`,
+      `${commandName} api add 115-qrcode — 扫码添加 115`,
+      `${commandName} api add 189-qrcode — 扫码添加 189 云盘`,
+      `${commandName} api add 115-open REFRESH ACCESS EXPIRES — 添加 115 Open`,
+      `${commandName} api add 115-open-qrcode — 扫码添加 115 Open`,
+      `${commandName} api add aliyun-oauth REFRESH ACCESS EXPIRES — OAuth 添加阿里云盘`,
+      `${commandName} api add aliyun-refresh REFRESH — 用刷新 Token 添加阿里云盘`,
+      `${commandName} api add aliyun-qrcode — 扫码添加阿里云盘`,
+      `${commandName} api add baidu-oauth REFRESH ACCESS EXPIRES — OAuth 添加百度网盘`,
+      `${commandName} api add onedrive-oauth REFRESH ACCESS EXPIRES — OAuth 添加 OneDrive`,
+      `${commandName} api add google-oauth REFRESH ACCESS EXPIRES — OAuth 添加 Google Drive`,
+      `${commandName} api add google-refresh CLIENT SECRET REFRESH — 刷新 Token 添加 Google Drive`,
+      `${commandName} api add xunlei-oauth REFRESH ACCESS EXPIRES — OAuth 添加迅雷`,
+      `${commandName} api add xunlei-open REFRESH ACCESS EXPIRES — OAuth 添加迅雷 Open`,
+      `${commandName} api add 123-oauth REFRESH ACCESS EXPIRES — OAuth 添加 123 云盘`,
+      `${commandName} api add guangya-oauth REFRESH ACCESS EXPIRES — OAuth 添加光鸭云盘`,
+      `${commandName} api add guangya-qrcode — 扫码添加光鸭云盘`,
+      `${commandName} api add s3 ACCESS SECRET REGION BUCKET — 添加 S3`,
+      `${commandName} api add sftp HOST PORT USER PASSWORD — 添加 SFTP`,
+      `${commandName} api add ftp HOST PORT USER PASSWORD — 添加 FTP/FTPS`,
+      `${commandName} api add smb SERVER SHARE USER PASSWORD — 添加 SMB`,
+      `${commandName} api add clouddrive GRPC_URL TOKEN — 添加 CloudDrive 级联`,
+      `${commandName} api discover-smb — 发现 SMB 服务器`,
+      `${commandName} api discover-smb-shares SERVER USER PASSWORD — 发现 SMB 共享`,
+      `${commandName} api oauth-state TYPE RETURN_URL — 创建 OAuth 状态`
+    ]
+  },
+  {
+    title: '备份',
+    lines: [
+      `${commandName} backup list — 列出备份任务`,
+      `${commandName} backup can-add — 检查备份添加配额`,
+      `${commandName} backup add SOURCE DEST — 添加备份任务`,
+      `${commandName} backup update SOURCE DEST — 更新备份任务`,
+      `${commandName} backup remove SOURCE confirm — 删除备份任务`,
+      `${commandName} backup enable SOURCE on|off — 开关备份任务`,
+      `${commandName} backup watch SOURCE on|off — 开关文件监听`,
+      `${commandName} backup destination add SOURCE DEST — 添加备份目标`,
+      `${commandName} backup destination remove SOURCE DEST — 删除备份目标`,
+      `${commandName} backup status SOURCE — 查看备份状态`,
+      `${commandName} backup strategy SOURCE REPLACE DELETE COMPLETE SECONDS — 设置备份策略`,
+      `${commandName} backup schedule add SOURCE TIME DAYS — 添加时间计划`,
+      `${commandName} backup schedule clear SOURCE — 清空时间计划`,
+      `${commandName} backup rule add SOURCE TYPE VALUE MODE SCOPE — 添加文件规则`,
+      `${commandName} backup rule clear SOURCE — 清空文件规则`,
+      `${commandName} backup restart SOURCE — 立即重新扫描备份`
+    ]
+  },
+  {
+    title: '远程上传与离线任务',
+    lines: [
+      `${commandName} remote add URL PATH — 创建离线下载任务`,
+      `${commandName} remote list — 查看当前云盘离线任务`,
+      `${commandName} remote list-all CLOUD USER PAGE — 查看全部离线任务`,
+      `${commandName} remote remove CLOUD USER confirm — 删除离线任务`,
+      `${commandName} remote upload PATH — 回复 Telegram 文件并用官方协议上传`,
+      `${commandName} remote control pause ID — 暂停官方远程上传`,
+      `${commandName} remote control resume ID — 恢复官方远程上传`,
+      `${commandName} remote control cancel ID — 取消官方远程上传`,
+      `${commandName} remote quota CLOUD USER PATH — 查询离线配额`,
+      `${commandName} remote clear CLOUD USER FILTER delete PATH — 清理离线任务`,
+      `${commandName} remote restart CLOUD USER HASH URL PARENT PATH — 重启离线任务`
+    ]
+  },
+  {
+    title: '系统、缓存与 WebDAV',
+    lines: [
+      `${commandName} system runtime — 查看运行信息`,
+      `${commandName} system settings — 查看系统设置`,
+      `${commandName} system set KEY VALUE — 修改系统设置`,
+      `${commandName} system set-log FILE BACKUP FILE_COUNT BACKUP_COUNT — 设置日志轮换`,
+      `${commandName} system set-backup-limits HIGH LOW WALKERS — 设置备份资源限制`,
+      `${commandName} system cache stats — 查看磁盘缓存统计`,
+      `${commandName} system cache list — 列出缓存目录`,
+      `${commandName} system cache purge confirm — 清空文件缓存`,
+      `${commandName} system cache eviction STRATEGY — 设置缓存淘汰策略`,
+      `${commandName} system cache folder set PATH — 设置目录缓存规则`,
+      `${commandName} system cache folder remove PATH — 删除目录缓存规则`,
+      `${commandName} system dir-cache set PATH SECONDS — 设置目录缓存时间`,
+      `${commandName} system dir-cache effective PATH — 查看有效缓存时间`,
+      `${commandName} system dir-cache expire PATH — 强制目录缓存过期`,
+      `${commandName} system dir-cache vacuum — 压缩目录缓存数据库`,
+      `${commandName} system dir-cache size — 查看目录缓存数据库大小`,
+      `${commandName} system table open — 查看打开文件表`,
+      `${commandName} system table dir — 查看目录缓存表`,
+      `${commandName} system table refs PATH — 查看引用路径`,
+      `${commandName} system table temp — 查看临时文件表`,
+      `${commandName} system capabilities — 查看服务能力`,
+      `${commandName} system service restart confirm — 重启服务`,
+      `${commandName} system service shutdown confirm — 关闭服务`,
+      `${commandName} system service update confirm — 更新服务`,
+      `${commandName} system web get — 查看 Web 服务配置`,
+      `${commandName} system web set PORT HTTPS_PORT on|off — 修改 Web 服务配置`,
+      `${commandName} system web self-cert confirm — 生成自签名证书`,
+      `${commandName} dav status — 查看 WebDAV 状态`,
+      `${commandName} dav on — 开启 WebDAV`,
+      `${commandName} dav off — 关闭 WebDAV`,
+      `${commandName} dav account on PATH — 开启账户模式`,
+      `${commandName} dav account off — 关闭账户模式`,
+      `${commandName} dav ls PATH — 浏览 WebDAV 目录`,
+      `${commandName} dav mkdir PATH — 创建 WebDAV 目录`,
+      `${commandName} dav rm PATH confirm — 删除 WebDAV 路径`,
+      `${commandName} dav add USER PASSWORD PATH — 添加 WebDAV 用户`,
+      `${commandName} dav remove USER confirm — 删除 WebDAV 用户`
+    ]
+  }
+]
 
-<b>文件操作</b>
-• <code>${commandName} ls|find|grep</code> 浏览目录、搜索文件名或内容
-• <code>${commandName} mkdir|rename|mv|cp|rm</code> 创建目录、改名、移动、复制或删除文件
-• <code>${commandName} df</code> 查看空间；<code>file detail|meta|original</code> 查看详情、元数据或原始路径
-• <code>${commandName} dl /路径/文件</code> 下载文件并替换当前命令消息；不生成链接
-• 回复 Telegram 文件后使用 <code>${commandName} up [目标目录]</code> 通过 WebDAV 上传
+const buildHelpMessages = (collapse: boolean): string[] =>
+  helpSections.map(({ title, lines }) => {
+    const body = lines
+      .map((line) => {
+        const separator = line.indexOf(' — ')
+        const command = separator >= 0 ? line.slice(0, separator) : line
+        const description = separator >= 0 ? line.slice(separator + 3) : ''
+        return `• <code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
+      })
+      .join('\n')
+    return `<b>☁️ ${title}</b>\n${collapse ? `<blockquote expandable>${body}</blockquote>` : body}`
+  })
 
-<b>传输任务</b>
-• <code>${commandName} transfer status</code> 查看任务数量；<code>downloads|uploads</code> 查看下载/上传任务和进度
-• <code>${commandName} transfer copies|merges</code> 查看复制/移动任务或合并任务详情
-• <code>${commandName} transfer pause|resume|cancel</code> 控制下载/上传任务（支持 all）
-• <code>${commandName} transfer copy ...</code> 暂停、恢复、取消、重启、批量控制和清理复制任务
-• <code>${commandName} transfer merge cancel SOURCE DEST</code> 取消指定合并任务
-
-<b>Cloud API</b>
-• <code>${commandName} api list</code> 查看已配置云盘；<code>remove CLOUD USER confirm</code> 删除云盘配置
-• <code>${commandName} api add ...</code> 添加 WebDAV、本地目录、PikPak、115、阿里、百度、OneDrive、Google、迅雷、123、光鸭、CloudDrive
-• <code>${commandName} api add s3|sftp|ftp|smb ...</code> 添加 S3、SFTP、FTP/FTPS 或 SMB 存储
-• <code>${commandName} api config get|set ...</code> 查看或修改线程、限速、代理和下载选项
-• <code>${commandName} api discover-smb</code> 发现 SMB 服务器；<code>discover-smb-shares ...</code> 查询服务器共享
-• OAuth/二维码：登录上述服务
-
-<b>备份</b>
-• <code>${commandName} backup list|status</code> 查看备份状态、目标和策略
-• <code>${commandName} backup add|update|remove</code> 新增、更新或删除备份任务
-• <code>${commandName} backup enable|watch</code> 开关备份任务或文件系统监听；<code>destination</code> 管理目标
-• <code>${commandName} backup strategy ...</code> 设置替换、删除、完成策略和扫描间隔
-• <code>${commandName} backup schedule add|clear ...</code> 设置或清空定时计划
-• <code>${commandName} backup rule add|clear ...</code> 设置扩展名、文件名、正则和大小过滤规则
-• <code>${commandName} backup restart /源目录</code> 立即重新扫描；<code>can-add</code> 查询可否继续添加
-
-<b>远程上传与离线任务</b>
-• <code>${commandName} remote add URL /目录</code> 创建网盘离线下载；<code>list|list-all|remove</code> 管理离线任务
-• 回复 Telegram 文件后使用 <code>${commandName} remote upload /目标目录</code> 通过官方远程上传协议上传
-• <code>${commandName} remote control pause|resume|cancel UPLOAD_ID</code> 控制远程上传
-• <code>${commandName} remote quota|clear|restart ...</code> 查询离线配额、清理任务或重启离线任务
-
-<b>系统、缓存与服务</b>
-• <code>${commandName} system runtime|settings|set</code> 查看或修改运行信息、系统设置
-• <code>${commandName} system set-log ...</code> 整体修改日志轮换；<code>set-backup-limits ...</code> 修改备份资源限制
-• <code>${commandName} system cache stats|list|purge|eviction|folder</code> 查看、清理和配置磁盘缓存
-• <code>${commandName} system dir-cache ...</code> 设置目录缓存 TTL、强制过期、压缩数据库或查看大小
-• <code>${commandName} system table open|dir|refs|temp</code> 查看文件表、目录缓存、引用路径和临时文件
-• <code>${commandName} system capabilities</code> 查看服务能力；<code>service restart|shutdown|update confirm</code> 控制服务
-• <code>${commandName} system web get|set|self-cert</code> 查看/修改 Web 服务或生成自签名证书
-
-<b>其他</b>
-• <code>${commandName} mount ...</code> 管理挂载点；<code>dav ...</code> 管理 WebDAV 服务和用户
-• <code>${commandName} status</code> 查看插件配置状态；<code>check</code> 验证 CloudDrive2 连接
-• <code>${commandName} conf ...</code> 配置服务地址、账户、Token、路径和 WebDAV 参数
-
-敏感参数只发送给已配置的 CloudDrive2 服务；列表显示时会脱敏。`
+const helpText = buildHelpMessages(true).join('\n\n')
 
 const htmlText = (text: string): string => html(text)
 
@@ -2058,7 +2236,8 @@ class Cd2Plugin extends Plugin {
         webdavUrl: `${DEFAULT_ENDPOINT}/dav`,
         webdavUsername: '',
         webdavPassword: '',
-        webdavRoot: '/'
+        webdavRoot: '/',
+        collapse: true
       })
     }
     return this.dbPromise
@@ -2067,7 +2246,7 @@ class Cd2Plugin extends Plugin {
   private async getConfig(): Promise<Cd2Config> {
     const db = await this.getDb()
     await db.read()
-    const defaults: Cd2Config = { endpoint: DEFAULT_ENDPOINT, token: '', accountUsername: '', accountPassword: '', defaultPath: '/', webdavUrl: `${DEFAULT_ENDPOINT}/dav`, webdavUsername: '', webdavPassword: '', webdavRoot: '/' }
+    const defaults: Cd2Config = { endpoint: DEFAULT_ENDPOINT, token: '', accountUsername: '', accountPassword: '', defaultPath: '/', webdavUrl: `${DEFAULT_ENDPOINT}/dav`, webdavUsername: '', webdavPassword: '', webdavRoot: '/', collapse: true }
     const config = { ...defaults, ...db.data }
     if (JSON.stringify(config) !== JSON.stringify(db.data)) {
       db.data = config
@@ -2090,6 +2269,18 @@ class Cd2Plugin extends Plugin {
     return this.client
   }
 
+  private async handleCollapse(msg: MessageContext, args: string[]): Promise<void> {
+    const config = await this.getConfig()
+    const state = args[0]?.toLowerCase()
+    if (!state) {
+      await msg.edit({ text: htmlText(`📖 Telegram 原生折叠：${config.collapse ? '开启' : '关闭'}\n用法：${commandName} collapse on|off`) })
+      return
+    }
+    if (args.length !== 1 || (state !== 'on' && state !== 'off')) throw new Error(`用法：${commandName} collapse on|off`)
+    await this.updateConfig({ collapse: state === 'on' })
+    await msg.edit({ text: htmlText(`✅ Telegram 原生折叠已${state === 'on' ? '开启' : '关闭'}`) })
+  }
+
   private async handleConfig(msg: MessageContext, args: string[]): Promise<void> {
     const action = args[0]?.toLowerCase()
     if (action === 'show') {
@@ -2106,7 +2297,8 @@ class Cd2Plugin extends Plugin {
             `<b>WebDAV：</b> <code>${htmlEscape(config.webdavUrl || '未设置')}</code>`,
             `<b>WebDAV 用户：</b> <code>${htmlEscape(config.webdavUsername || (config.accountUsername ? `${config.accountUsername}（CloudDrive 账户）` : '未设置'))}</code>`,
             `<b>WebDAV 密码：</b> <code>${htmlEscape(maskToken(config.webdavPassword))}</code>`,
-            `<b>WebDAV 上传根目录：</b> <code>${htmlEscape(config.webdavRoot)}</code>`
+            `<b>WebDAV 上传根目录：</b> <code>${htmlEscape(config.webdavRoot)}</code>`,
+            `<b>Telegram 原生折叠：</b> ${config.collapse ? '开启' : '关闭'}`
           ].join('\n')
         )
       })
@@ -3521,9 +3713,14 @@ class Cd2Plugin extends Plugin {
         const args = tokenize(msg.text).slice(1)
         const subcommand = args[0]?.toLowerCase()
         if (!subcommand || subcommand === 'h') {
-          await msg.edit({ text: htmlText(helpText), disableWebPreview: true })
+          const config = await this.getConfig()
+          const messages = buildHelpMessages(config.collapse)
+          await msg.edit({ text: htmlText(messages[0]), disableWebPreview: true })
+          for (const message of messages.slice(1)) await msg.replyText(htmlText(message), { disableWebPreview: true })
         } else if (subcommand === 'conf') {
           await this.handleConfig(msg, args.slice(1))
+        } else if (subcommand === 'collapse') {
+          await this.handleCollapse(msg, args.slice(1))
         } else if (subcommand === 'login') {
           await this.handleLogin(msg)
         } else if (subcommand === 'token') {

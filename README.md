@@ -20,10 +20,10 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 
 ### 账户与安全
 
-- `.cd2 account status`：查看账户和本地登录状态。
+- `.cd2 collapse`：查看 Telegram 原生折叠状态；`.cd2 collapse on` 开启，`.cd2 collapse off` 关闭。帮助开启折叠时按功能分组显示可展开内容。
 - `.cd2 account logout`：退出 CloudDrive2，并清除本地登录 Token。
 - `.cd2 account reset-email` / `.cd2 account reset`：发送密码重置邮件或执行密码重置。
-- `.cd2 account delete-email` / `.cd2 account delete ... confirm`：发送账户注销邮件，并在确认后注销账户。
+- `.cd2 account delete-email` / `.cd2 account delete DELETE_CODE PASSWORD [TOTP] [forfeit] confirm`：发送账户注销邮件，并在确认后注销账户。
 - `.cd2 2fa status|setup|enable|disable`：查看、设置、启用或关闭两步验证。
 - `.cd2 2fa recovery|regenerate`：查看或重新生成恢复码；`login` 使用 TOTP 登录。
 - `.cd2 session list|revoke|revoke-others`：查看会话、撤销指定会话或撤销其他会话。
@@ -38,9 +38,12 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 - `.cd2 transfer status|downloads|uploads`：查看任务总量和下载/上传进度。
 - `.cd2 transfer copies|merges`：查看复制/移动任务和合并任务。
 - `.cd2 transfer pause|resume|cancel`：控制下载/上传任务。
-- `.cd2 transfer copy ...`：暂停、恢复、取消、重启、批量控制和清理复制任务。
+- `.cd2 transfer copy pause|resume|cancel|restart SOURCE DEST`：暂停、恢复、取消或重启指定复制任务。
+- `.cd2 transfer copy pause-all|resume-all|remove-completed|remove-all`：批量暂停、恢复或清理复制任务。
+- `.cd2 transfer copy pause|resume|remove TASK_KEY`：按任务键控制或删除复制任务。
 - `.cd2 transfer merge cancel SOURCE DEST`：取消指定合并任务。
-- `.cd2 mount ...`：新增、修改、挂载、卸载和删除挂载点。
+- `.cd2 mount list`：列出挂载点；`.cd2 mount can-add`：检查是否还能添加挂载点。
+- `.cd2 mount add|update|mount|unmount|remove`：新增、修改、挂载、卸载或删除挂载点。
 
 ### Cloud API
 
@@ -49,7 +52,7 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 - `.cd2 api add s3|sftp|ftp|smb`：添加 S3、SFTP、FTP/FTPS 或 SMB 存储。
 - `.cd2 api config get|set`：查看或修改线程数、限速、代理、TLS 和下载选项。
 - `.cd2 api discover-smb` / `.cd2 api discover-smb-shares`：发现 SMB 服务器及其共享目录。
-- OAuth/二维码登录：用于 115 Open、123 云盘、光鸭云盘、迅雷 Open 等服务。
+- OAuth/二维码登录：用于 115 Open、123 云盘、光鸭云盘、迅雷 Open、115、阿里云盘和 189 云盘等服务。
 
 ### 备份
 
@@ -69,12 +72,15 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 - `.cd2 remote quota|clear|restart`：查询离线配额、清理离线任务、重启失败任务。
 - `.cd2 system runtime|settings|set`：查看运行信息、系统设置和修改单项设置。
 - `.cd2 system set-log` / `.cd2 system set-backup-limits`：整体修改日志轮换和备份资源限制。
-- `.cd2 system cache ...`：查看、清理和配置磁盘缓存。
-- `.cd2 system dir-cache ...`：设置目录缓存 TTL、强制过期、压缩缓存数据库和查看大小。
+- `.cd2 system cache stats|list`：查看缓存统计和缓存目录；`.cd2 system cache purge`：清理缓存。
+- `.cd2 system cache eviction|folder`：设置淘汰策略或目录缓存规则。
+- `.cd2 system dir-cache set|effective|expire|vacuum|size`：设置/查看目录缓存 TTL、强制过期、压缩数据库或查看大小。
 - `.cd2 system table open|dir|refs|temp`：查看打开文件表、目录缓存、引用路径和临时文件。
 - `.cd2 system web get|set|self-cert`：查看/修改 Web 服务配置或生成自签名证书。
 - `.cd2 system service restart|shutdown|update confirm`：重启、关闭或更新服务。
-- `.cd2 dav ...`：管理 WebDAV 服务、账户模式、独立用户和目录操作。
+- `.cd2 dav status|on|off`：查看或开关 WebDAV 服务；`.cd2 dav account on|off`：开关账户模式。
+- `.cd2 dav ls|mkdir|rm`：浏览、创建或删除 WebDAV 路径。
+- `.cd2 dav add|remove`：添加或删除独立 WebDAV 用户。
 
 Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账号密码等敏感值只作为命令参数发送，不会写入插件配置。具体参数格式请使用 `.cd2 h` 查看。
 
