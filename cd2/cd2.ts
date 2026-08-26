@@ -300,11 +300,13 @@ const helpSections: HelpSection[] = [
   }
 ]
 
-const buildHelpBody = (): string => helpSections.map(({ title, lines }) => `<b>☁️ ${htmlEscape(title)}</b>\n${lines.map(formatHelpLine).join('\n')}`).join('\n\n')
+const buildHelpSection = ({ title, lines }: HelpSection): string => `<b>☁️ ${htmlEscape(title)}</b>\n${lines.map(formatHelpLine).join('\n')}`
+
+const buildHelpBody = (): string => helpSections.map((section) => `<blockquote expandable>\n${buildHelpSection(section)}\n</blockquote>`).join('\n\n')
 
 const buildHelpDescription = (collapse: boolean): string => {
-  const body = buildHelpBody()
-  return collapse ? `<blockquote expandable>\n${body}\n</blockquote>` : body
+  if (!collapse) return helpSections.map(buildHelpSection).join('\n\n')
+  return buildHelpBody()
 }
 
 const htmlText = (text: string): string => html(text)
