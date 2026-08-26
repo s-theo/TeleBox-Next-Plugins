@@ -295,12 +295,18 @@ const buildHelpMessages = (collapse: boolean): string[] =>
     const body = lines
       .map((line) => {
         const separator = line.indexOf(' — ')
-        const command = separator >= 0 ? line.slice(0, separator) : line
+        const rawCommand = separator >= 0 ? line.slice(0, separator) : line
         const description = separator >= 0 ? line.slice(separator + 3) : ''
-        return `• <code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
+        const command = rawCommand
+          .split(/\s+/)
+          .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
+          .join(' ')
+        return `${command} — ${description}`
       })
+      .map((line) => htmlEscape(line))
+      .map((line) => `• ${line}`)
       .join('\n')
-    return `<b>☁️ ${title}</b>\n${collapse ? `<blockquote expandable>${body}</blockquote>` : body}`
+    return `<b>☁️ ${htmlEscape(title)}</b>\n${collapse ? `<blockquote expandable>${body}</blockquote>` : body}`
   })
 
 const helpText = buildHelpMessages(true).join('\n\n')
