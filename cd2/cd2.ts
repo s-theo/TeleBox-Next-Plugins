@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto'
 import * as http from 'node:http'
 import * as http2 from 'node:http2'
 import * as https from 'node:https'
@@ -61,84 +62,60 @@ const MAX_ITEMS = 40
 const MAX_MESSAGE_LENGTH = 3800
 
 const helpText = `
-<b>☁️ CloudDrive2 全功能管理</b>
+<b>☁️ CloudDrive2 管理</b>
 
-<b>1. 公共方法</b>
-• <code>${commandName} status</code> 服务、登录和运行状态
-• <code>${commandName} check</code> 验证连接
-• <code>${commandName} account status|logout</code> 账户状态/退出
+<b>账户与安全</b>
+• <code>${commandName} account status|logout|reset-email|reset|delete-email|delete</code>
+• <code>${commandName} login</code> · <code>${commandName} 2fa status|setup|enable|disable|recovery|regenerate|login</code>
+• <code>${commandName} session list|revoke|revoke-others</code>
+• <code>${commandName} token show|list|info|create|modify|remove</code>
 
-<b>2. 文件操作</b>
-• <code>${commandName} ls [路径]</code> 浏览目录
-• <code>${commandName} find /路径/文件</code> 查询文件
-• <code>${commandName} grep 关键词 [路径]</code> 搜索文件
-• <code>${commandName} mkdir /父目录 文件夹名</code> 创建目录
-• <code>${commandName} rename /文件 新名称</code> 重命名
-• <code>${commandName} mv /源路径 /目标目录</code> 移动
-• <code>${commandName} cp /源路径 /目标目录</code> 复制
-• <code>${commandName} rm /路径 confirm</code> 删除
-• <code>${commandName} df [路径]</code> 空间信息
-• <code>${commandName} dl /路径/文件</code> 下载并发送到 Telegram
+<b>文件</b>
+• <code>${commandName} ls|find|grep|mkdir|rename|mv|cp|rm|df</code>
+• <code>${commandName} file detail|meta|original /路径</code>
+• <code>${commandName} dl /路径/文件</code> 下载到 Telegram
+• 回复文件：<code>${commandName} up [目标目录]</code> WebDAV 上传
 
-<b>3. 挂载点管理</b>
-• <code>${commandName} mount list</code> 查看挂载点
-• <code>${commandName} mount add /挂载点 /源目录 [readonly] [noauto]</code>
-• <code>${commandName} mount update /挂载点 /新源目录 [readonly] [noauto]</code>
-• <code>${commandName} mount mount|unmount /挂载点</code>
-• <code>${commandName} mount remove /挂载点 confirm</code>
+<b>传输任务</b>
+• <code>${commandName} transfer status|downloads|uploads|copies|merges</code>
+• <code>${commandName} transfer pause|resume|cancel all|KEY...</code>
+• <code>${commandName} transfer copy pause|resume|remove TASK_KEY...</code>
+• <code>${commandName} transfer copy pause-all|resume-all|remove-completed|remove-all</code>
+• <code>${commandName} transfer copy cancel|restart SOURCE DEST</code>
+• <code>${commandName} transfer merge cancel SOURCE DEST</code>
 
-<b>4. 传输任务</b>
-• <code>${commandName} transfer status</code> 任务统计
-• <code>${commandName} transfer downloads</code> 下载任务列表
-• <code>${commandName} transfer uploads [页码]</code> 上传任务列表
-• <code>${commandName} transfer pause|resume|cancel all|KEY...</code> 控制上传任务
+<b>Cloud API</b>
+• <code>${commandName} api list|can-add|discover-smb|discover-smb-shares|remove|config</code>
+• <code>${commandName} api add webdav|local|pikpak|s3|sftp|ftp|smb|clouddrive ...</code>
+• <code>${commandName} api add 115-open|115-open-qrcode|123-oauth|guangya-oauth|guangya-qrcode ...</code>
+• 也支持 115、阿里、百度、OneDrive、Google、迅雷 OAuth/二维码登录
 
-<b>5. 云 API 管理</b>
-• <code>${commandName} api list</code> 查看云 API
-• <code>${commandName} api add webdav URL USER PASSWORD</code>
-• <code>${commandName} api add local /本地目录</code>
-• <code>${commandName} api add pikpak USER PASSWORD</code>
-• <code>${commandName} api add aliyun-refresh REFRESH_TOKEN [openapi]</code>
-• <code>${commandName} api remove CLOUD USER confirm</code>
-• <code>${commandName} api config get|set CLOUD USER KEY VALUE</code>
+<b>备份</b>
+• <code>${commandName} backup list|status|add|update|remove|enable|watch|destination|restart</code>
+• <code>${commandName} backup strategy /源 替换 删除 完成 间隔 [sync-delete]</code>
+• <code>${commandName} backup schedule add|clear /源 [时间] [星期]</code>
+• <code>${commandName} backup rule add|clear /源 ...</code>
 
-<b>6. 备份管理</b>
-• <code>${commandName} backup list</code> 查看备份
-• <code>${commandName} backup add|update /源目录 /目标目录</code>
-• <code>${commandName} backup enable|watch /源目录 on|off</code>
-• <code>${commandName} backup destination add|remove /源目录 /目标目录</code>
-• <code>${commandName} backup restart /源目录</code>
-• <code>${commandName} backup remove /源目录 confirm</code>
+<b>远程上传与离线任务</b>
+• <code>${commandName} remote add|list|list-all|remove</code>
+• 回复文件：<code>${commandName} remote upload /目标目录</code> 官方流式协议
+• <code>${commandName} remote control pause|resume|cancel UPLOAD_ID</code>
+• <code>${commandName} remote quota|clear|restart ...</code>
 
-<b>7. WebDAV 管理</b>
-• <code>${commandName} dav status|on|off</code>
-• <code>${commandName} dav account on|off [/根目录]</code> CloudDrive 账户模式
-• <code>${commandName} dav add USER PASSWORD [/根目录]</code> 添加独立用户
-• <code>${commandName} dav remove USER confirm</code>
-• <code>${commandName} dav ls|mkdir|rm</code>
+<b>系统</b>
+• <code>${commandName} system runtime|settings|set|set-log|set-backup-limits|table|capabilities</code>
+• <code>${commandName} system cache stats|list|purge|eviction|folder</code>
+• <code>${commandName} system dir-cache set|effective|expire|vacuum|size</code>
+• <code>${commandName} system service restart|shutdown|update confirm</code>
+• <code>${commandName} system web get|set|self-cert</code>
 
-<b>8. 令牌管理</b>
-• <code>${commandName} login</code> 账户登录并获取 Token
-• <code>${commandName} token show|clear|login</code>
-• <code>${commandName} conf token YOUR_CD2_API_TOKEN</code>
+<b>其他</b>
+• <code>${commandName} mount list|add|update|mount|unmount|remove</code>
+• <code>${commandName} dav status|on|off|account|ls|mkdir|rm|add|remove</code>
+• <code>${commandName} status</code> · <code>${commandName} check</code>
+• <code>${commandName} conf endpoint|token|account|path|dav-url|dav-user|dav-root|show</code>
 
-<b>9. 远程上传</b>
-• <code>${commandName} remote add URL [目标目录]</code> 提交离线下载/远程上传任务
-• <code>${commandName} remote list [路径]</code>
-• <code>${commandName} remote list-all CLOUD ACCOUNT [页码]</code>
-• <code>${commandName} remote remove CLOUD ACCOUNT confirm HASH...</code>
-• 回复 Telegram 文件后：<code>${commandName} up [目标目录]</code>
-
-<b>基础配置</b>
-• <code>${commandName} conf endpoint http://host:19798</code>
-• <code>${commandName} conf account USER PASSWORD</code>
-• <code>${commandName} conf path /</code>
-• <code>${commandName} conf dav-url http://host:19798/dav</code>
-• <code>${commandName} conf dav-user USER PASSWORD</code>
-• <code>${commandName} conf dav-root /Telegram</code>
-• <code>${commandName} conf show</code>
-
-账户密码、Token、云 API 密钥只保存在插件自己的配置文件中，显示时会脱敏。`
+敏感参数只发送给已配置的 CloudDrive2 服务；列表显示时会脱敏。`
 
 const htmlText = (text: string): string => html(text)
 
@@ -321,6 +298,16 @@ const errorMessage = (error: unknown): string => {
   return text.replace(/^Error:\s*/i, '').slice(0, 500)
 }
 
+const parseProxySetting = (value: string): Record<string, unknown> => {
+  const normalized = value.toLowerCase()
+  if (normalized === 'system') return { proxyType: 0 }
+  if (normalized === 'none' || normalized === 'off') return { proxyType: 1 }
+  const url = new URL(value)
+  const proxyType = url.protocol === 'http:' || url.protocol === 'https:' ? 2 : url.protocol === 'socks5:' ? 3 : -1
+  if (proxyType < 0) throw new Error('代理只支持 system|none|http://|https://|socks5://')
+  return { proxyType, host: url.hostname, port: Number(url.port || (proxyType === 2 ? 8080 : 1080)), username: decodeURIComponent(url.username), password: decodeURIComponent(url.password) }
+}
+
 const formatBytes = (value: string | number | undefined): string => {
   const bytes = Number(value || 0)
   if (!Number.isFinite(bytes) || bytes < 0) return '未知'
@@ -406,6 +393,13 @@ const encodeField = (number: number, value: string | number | bigint | boolean):
   return Buffer.concat([encodeVarint((number << 3) | 2), encodeVarint(bytes.length), bytes])
 }
 
+const encodePresentField = (number: number, value: string | number | bigint | boolean): Buffer => {
+  if (typeof value === 'boolean') return Buffer.concat([encodeVarint(number << 3), encodeVarint(value ? 1 : 0)])
+  if (typeof value === 'number' || typeof value === 'bigint') return Buffer.concat([encodeVarint(number << 3), encodeVarint(value)])
+  const bytes = Buffer.from(value, 'utf8')
+  return Buffer.concat([encodeVarint((number << 3) | 2), encodeVarint(bytes.length), bytes])
+}
+
 const encodeBytesField = (number: number, value: Buffer): Buffer => Buffer.concat([encodeVarint((number << 3) | 2), encodeVarint(value.length), value])
 
 const encodeNested = (values: Array<[number, string | number | bigint | boolean | Buffer | undefined]>): Buffer => {
@@ -413,6 +407,190 @@ const encodeNested = (values: Array<[number, string | number | bigint | boolean 
     if (value === undefined || value === null || value === '' || value === false || value === 0) return Buffer.alloc(0)
     return Buffer.isBuffer(value) ? encodeBytesField(number, value) : encodeField(number, value)
   })
+  return Buffer.concat(fields)
+}
+
+const TOKEN_PERMISSION_FIELDS = [
+  'allowList',
+  'allowSearch',
+  'allowListLocal',
+  'allowCreateFolder',
+  'allowCreateFile',
+  'allowWrite',
+  'allowRead',
+  'allowRename',
+  'allowMove',
+  'allowCopy',
+  'allowDelete',
+  'allowDeletePermanently',
+  'allowCreateEncrypt',
+  'allowUnlockEncrypted',
+  'allowLockEncrypted',
+  'allowAddOfflineDownload',
+  'allowListOfflineDownloads',
+  'allowModifyOfflineDownloads',
+  'allowSharedLinks',
+  'allowViewProperties',
+  'allowGetSpaceInfo',
+  'allowViewRuntimeInfo',
+  'allowGetMemberships',
+  'allowModifyMemberships',
+  'allowGetMounts',
+  'allowModifyMounts',
+  'allowGetTransferTasks',
+  'allowModifyTransferTasks',
+  'allowGetCloudApis',
+  'allowModifyCloudApis',
+  'allowGetSystemSettings',
+  'allowModifySystemSettings',
+  'allowGetBackups',
+  'allowModifyBackups',
+  'allowGetDavConfig',
+  'allowModifyDavConfig',
+  'allowTokenManagement',
+  'allowGetAccountInfo',
+  'allowModifyAccount',
+  'allowServiceControl',
+  'allowPushMessage'
+] as const
+
+const READ_TOKEN_PERMISSIONS = new Set([
+  'allowList',
+  'allowSearch',
+  'allowListLocal',
+  'allowRead',
+  'allowListOfflineDownloads',
+  'allowViewProperties',
+  'allowGetSpaceInfo',
+  'allowViewRuntimeInfo',
+  'allowGetMemberships',
+  'allowGetMounts',
+  'allowGetTransferTasks',
+  'allowGetCloudApis',
+  'allowGetSystemSettings',
+  'allowGetBackups',
+  'allowGetDavConfig',
+  'allowGetAccountInfo'
+])
+
+const tokenPermissions = (profile: string): Record<string, boolean> => {
+  const normalized = profile.toLowerCase()
+  if (!['read', 'write', 'full'].includes(normalized)) throw new Error('Token 权限预设只支持 read|write|full')
+  return Object.fromEntries(TOKEN_PERMISSION_FIELDS.map((name) => [name, normalized === 'full' || normalized === 'write' || READ_TOKEN_PERMISSIONS.has(name)]))
+}
+
+const encodeTokenPermissions = (permissions: Record<string, unknown>): Buffer => Buffer.concat(TOKEN_PERMISSION_FIELDS.map((name, index) => encodePresentField(index + 1, Boolean(permissions[name]))))
+
+const encodeProxyInfo = (proxy: Record<string, unknown>): Buffer =>
+  Buffer.concat([
+    encodePresentField(1, Number(proxy.proxyType || 0)),
+    proxy.host ? encodeField(2, String(proxy.host)) : Buffer.alloc(0),
+    proxy.port !== undefined ? encodePresentField(3, Number(proxy.port)) : Buffer.alloc(0),
+    proxy.username ? encodeField(4, String(proxy.username)) : Buffer.alloc(0),
+    proxy.password ? encodeField(5, String(proxy.password)) : Buffer.alloc(0)
+  ])
+
+const encodeFileBackupRule = (rule: Record<string, unknown>): Buffer => {
+  const kind = String(rule.kind || 'extensions')
+  const field = { extensions: 1, fileNames: 2, regex: 3, minSize: 4 }[kind]
+  if (!field) throw new Error(`未知备份规则类型：${kind}`)
+  return Buffer.concat([
+    typeof rule.value === 'number' ? encodePresentField(field, rule.value) : encodePresentField(field, String(rule.value || '')),
+    encodePresentField(100, rule.isEnabled !== false),
+    encodePresentField(101, Boolean(rule.isBlackList)),
+    encodePresentField(102, Boolean(rule.applyToFolder)),
+    encodePresentField(103, rule.applyToFile !== false)
+  ])
+}
+
+const encodeTimeSchedule = (schedule: Record<string, unknown>): Buffer => {
+  const days = Array.isArray(schedule.daysOfWeek) ? Buffer.concat(schedule.daysOfWeek.map((day) => encodePresentField(1, Number(day)))) : Buffer.alloc(0)
+  return Buffer.concat([encodePresentField(1, schedule.isEnabled !== false), encodePresentField(2, Number(schedule.hour || 0)), encodePresentField(3, Number(schedule.minute || 0)), encodePresentField(4, Number(schedule.second || 0)), days.length ? encodeBytesField(5, days) : Buffer.alloc(0)])
+}
+
+const SYSTEM_SETTING_FIELDS: Record<string, [number, 'string' | 'uint' | 'double' | 'bool' | 'list' | 'proxy']> = {
+  dirCacheTimeToLiveSecs: [1, 'uint'],
+  maxPreProcessTasks: [2, 'uint'],
+  maxProcessTasks: [3, 'uint'],
+  tempFileLocation: [4, 'string'],
+  syncWithCloud: [5, 'bool'],
+  readDownloaderTimeoutSecs: [6, 'uint'],
+  uploadDelaySecs: [7, 'uint'],
+  processBlackList: [8, 'list'],
+  uploadIgnoredExtensions: [9, 'list'],
+  updateChannel: [10, 'uint'],
+  maxDownloadSpeedKBytesPerSecond: [11, 'double'],
+  maxUploadSpeedKBytesPerSecond: [12, 'double'],
+  deviceName: [13, 'string'],
+  dirCachePersistence: [14, 'bool'],
+  dirCacheDbLocation: [15, 'string'],
+  fileLogLevel: [16, 'uint'],
+  terminalLogLevel: [17, 'uint'],
+  backupLogLevel: [18, 'uint'],
+  enableAutoRegisterDevice: [19, 'bool'],
+  realtimeLogLevel: [20, 'uint'],
+  operatorPriorityOrder: [21, 'list'],
+  updateProxy: [22, 'proxy'],
+  startDelaySecs: [23, 'uint'],
+  fileBufferDiskCacheLocation: [24, 'string'],
+  fileBufferDiskCacheMaxBytes: [25, 'uint'],
+  cloudfsProxy: [26, 'proxy'],
+  maxFileLogSizeBytes: [27, 'uint'],
+  maxBackupLogSizeBytes: [28, 'uint'],
+  maxFileLogFiles: [29, 'uint'],
+  maxBackupLogFiles: [30, 'uint'],
+  backupQueueHighWater: [31, 'uint'],
+  backupQueueLowWater: [32, 'uint'],
+  maxConcurrentBackupWalkers: [33, 'uint'],
+  useTempFileForCrossCloudCopy: [34, 'bool']
+}
+
+const encodeDoubleField = (number: number, value: number): Buffer => {
+  const bytes = Buffer.allocUnsafe(8)
+  bytes.writeDoubleLE(value)
+  return Buffer.concat([encodeVarint((number << 3) | 1), bytes])
+}
+
+const encodeSystemSettings = (request: Record<string, unknown>): Buffer => {
+  const fields: Buffer[] = []
+  for (const [key, value] of Object.entries(request)) {
+    const spec = SYSTEM_SETTING_FIELDS[key]
+    if (!spec || value === undefined || value === null) continue
+    const [number, kind] = spec
+    if (kind === 'double') fields.push(encodeDoubleField(number, Number(value)))
+    else if (kind === 'list') {
+      const items = Array.isArray(value) ? value : String(value).split(',').filter(Boolean)
+      fields.push(encodeBytesField(number, Buffer.concat(items.map((item) => encodePresentField(1, String(item))))))
+    } else if (kind === 'proxy' && typeof value === 'object') fields.push(encodeBytesField(number, encodeProxyInfo(value as Record<string, unknown>)))
+    else if (kind === 'bool') fields.push(encodePresentField(number, Boolean(value)))
+    else if (kind === 'uint') fields.push(encodePresentField(number, Number(value)))
+    else fields.push(encodePresentField(number, String(value)))
+  }
+  return Buffer.concat(fields)
+}
+
+const encodeCloudApiConfig = (request: Record<string, unknown>): Buffer => {
+  const fields: Buffer[] = [
+    encodePresentField(1, Number(request.maxDownloadThreads || 0)),
+    encodePresentField(2, Number(request.minReadLengthKB || 0)),
+    encodePresentField(3, Number(request.maxReadLengthKB || 0)),
+    encodePresentField(4, Number(request.defaultReadLengthKB || 0)),
+    encodePresentField(5, Number(request.maxBufferPoolSizeMB || 0)),
+    encodePresentField(6, Number(request.maxQueriesPerSecond || 0)),
+    encodePresentField(7, Boolean(request.forceIpv4))
+  ]
+  if (request.apiProxy && typeof request.apiProxy === 'object') fields.push(encodeBytesField(8, encodeProxyInfo(request.apiProxy as Record<string, unknown>)))
+  if (request.dataProxy && typeof request.dataProxy === 'object') fields.push(encodeBytesField(9, encodeProxyInfo(request.dataProxy as Record<string, unknown>)))
+  if (request.customUserAgent !== undefined) fields.push(encodePresentField(10, String(request.customUserAgent)))
+  if (request.maxUploadThreads !== undefined) fields.push(encodePresentField(11, Number(request.maxUploadThreads)))
+  if (request.insecureTls !== undefined) fields.push(encodePresentField(12, Boolean(request.insecureTls)))
+  if (request.useHttpDownload !== undefined) fields.push(encodePresentField(13, Boolean(request.useHttpDownload)))
+  if (request.supportDirectLink !== undefined) fields.push(encodePresentField(14, Boolean(request.supportDirectLink)))
+  if (request.supportDirectDownloadUrl !== undefined) fields.push(encodePresentField(15, Boolean(request.supportDirectDownloadUrl)))
+  if (request.maxDownloadThreadsLimit !== undefined) fields.push(encodePresentField(18, Number(request.maxDownloadThreadsLimit)))
+  if (request.maxBufferPoolSizeMBLimit !== undefined) fields.push(encodePresentField(19, Number(request.maxBufferPoolSizeMBLimit)))
+  if (request.maxQueriesPerSecondLimit !== undefined) fields.push(encodePresentField(20, Number(request.maxQueriesPerSecondLimit)))
+  if (request.useMultithreadDownloaderForCopy !== undefined) fields.push(encodePresentField(21, Boolean(request.useMultithreadDownloaderForCopy)))
   return Buffer.concat(fields)
 }
 
@@ -436,16 +614,23 @@ const encodeBackup = (request: Record<string, unknown>): Buffer => {
           ])
         ]
       : []
-  return encodeNested([
-    [1, request.sourcePath as string],
-    ...destinations.map((destination) => [2, destination] as [number, Buffer]),
-    [4, request.fileReplaceRule as number],
-    [5, request.fileDeleteRule as number],
-    [6, request.isEnabled as boolean],
-    [7, request.fileSystemWatchEnabled as boolean],
-    [8, request.walkingThroughIntervalSecs as number],
-    [9, request.forceWalkingThroughOnStart as boolean],
-    [11, request.isTimeSchedulesEnabled as boolean]
+  const rules = Array.isArray(request.fileBackupRules) ? request.fileBackupRules.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object').map(encodeFileBackupRule) : []
+  const schedules = Array.isArray(request.timeSchedules) ? request.timeSchedules.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object').map(encodeTimeSchedule) : []
+  return Buffer.concat([
+    request.sourcePath ? encodeField(1, String(request.sourcePath)) : Buffer.alloc(0),
+    ...destinations.map((destination) => encodeBytesField(2, destination)),
+    ...rules.map((rule) => encodeBytesField(3, rule)),
+    encodePresentField(4, Number(request.fileReplaceRule || 0)),
+    encodePresentField(5, Number(request.fileDeleteRule || 0)),
+    encodePresentField(13, Number(request.fileCompletionRule || 0)),
+    encodePresentField(6, request.isEnabled !== false),
+    encodePresentField(7, Boolean(request.fileSystemWatchEnabled)),
+    encodePresentField(8, Number(request.walkingThroughIntervalSecs || 0)),
+    encodePresentField(9, Boolean(request.forceWalkingThroughOnStart)),
+    ...schedules.map((schedule) => encodeBytesField(10, schedule)),
+    encodePresentField(11, Boolean(request.isTimeSchedulesEnabled)),
+    encodePresentField(14, Boolean(request.syncDeleteFromDest)),
+    request.dontStartScanAfterAdd === undefined ? Buffer.alloc(0) : encodePresentField(15, Boolean(request.dontStartScanAfterAdd))
   ])
 }
 
@@ -466,6 +651,15 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
   }
   const addBytes = (number: number, value: unknown): void => {
     if (Buffer.isBuffer(value)) fields.push(encodeBytesField(number, value))
+  }
+  const addPresent = (number: number, value: unknown): void => {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint' || typeof value === 'boolean') fields.push(encodePresentField(number, value))
+  }
+  const addNested = (number: number, value: Buffer): void => {
+    fields.push(encodeBytesField(number, value))
+  }
+  const addProxy = (number: number, value: unknown): void => {
+    if (value && typeof value === 'object') addNested(number, encodeProxyInfo(value as Record<string, unknown>))
   }
   switch (method) {
     case 'GetSubFiles':
@@ -594,6 +788,8 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
       add(2, request.itemsPerPage)
       add(3, request.pageNumber)
       add(4, request.filter)
+      if (request.statusFilter !== undefined) addPresent(5, request.statusFilter)
+      if (request.operatorTypeFilter !== undefined) addPresent(6, request.operatorTypeFilter)
       break
     case 'CancelUploadFiles':
     case 'PauseUploadFiles':
@@ -658,16 +854,7 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
     case 'SetCloudAPIConfig': {
       add(1, request.cloudName)
       add(2, request.userName)
-      const cloudConfig = encodeNested([
-        [1, request.maxDownloadThreads as number],
-        [2, request.minReadLengthKB as number],
-        [3, request.maxReadLengthKB as number],
-        [4, request.defaultReadLengthKB as number],
-        [5, request.maxBufferPoolSizeMB as number],
-        [6, request.maxQueriesPerSecond as number],
-        [7, request.forceIpv4 as boolean]
-      ])
-      fields.push(encodeBytesField(3, cloudConfig))
+      fields.push(encodeBytesField(3, encodeCloudApiConfig(request)))
       break
     }
     case 'AddOfflineFiles':
@@ -681,6 +868,8 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
       add(4, request.infoHashes)
       break
     case 'ListOfflineFilesByPath':
+      addPresent(2, Boolean(request.forceRefresh))
+      break
     case 'GetFileDetailProperties':
     case 'GetMetaData':
     case 'GetOriginalPath':
@@ -690,6 +879,7 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
       add(1, request.cloudName)
       add(2, request.cloudAccountId)
       add(3, request.page)
+      add(4, request.path)
       break
     case 'CreateFile':
       add(1, request.parentPath)
@@ -712,6 +902,7 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
       break
     }
     case 'BackupRemove':
+    case 'BackupGetStatus':
     case 'BackupRestartWalkingThrough':
       add(1, request.value)
       break
@@ -732,6 +923,278 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
     case 'BackupSetFileSystemWatchEnabled':
       add(1, request.sourcePath)
       addBoolean(6, request.fileSystemWatchEnabled)
+      break
+    case 'BackupUpdateStrategies': {
+      add(1, request.sourcePath)
+      if (Array.isArray(request.destinations)) {
+        for (const value of request.destinations) {
+          const destination = value as Record<string, unknown>
+          addNested(2, Buffer.concat([encodePresentField(1, String(destination.destinationPath || '')), encodePresentField(2, destination.isEnabled !== false)]))
+        }
+      }
+      if (Array.isArray(request.fileBackupRules)) {
+        for (const value of request.fileBackupRules) addNested(3, encodeFileBackupRule(value as Record<string, unknown>))
+      }
+      if (request.fileReplaceRule !== undefined) addPresent(4, request.fileReplaceRule)
+      if (request.fileDeleteRule !== undefined) addPresent(5, request.fileDeleteRule)
+      if (request.fileSystemWatchEnabled !== undefined) addPresent(6, request.fileSystemWatchEnabled)
+      if (request.walkingThroughIntervalSecs !== undefined) addPresent(7, request.walkingThroughIntervalSecs)
+      break
+    }
+    case 'CancelMergeTask':
+    case 'CancelCopyTask':
+    case 'RestartCopyTask':
+      add(1, request.sourcePath)
+      add(2, request.destPath)
+      break
+    case 'PauseCopyTask':
+      add(1, request.sourcePath)
+      add(2, request.destPath)
+      addPresent(3, Boolean(request.pause))
+      break
+    case 'RemoveCopyTasks':
+    case 'ResumeCopyTasks':
+      add(1, request.taskKeys)
+      break
+    case 'PauseCopyTasks':
+      add(1, request.taskKeys)
+      addPresent(2, Boolean(request.pause))
+      break
+    case 'PauseAllCopyTasks':
+      addPresent(1, Boolean(request.pause))
+      break
+    case 'GetApiTokenInfo':
+    case 'RemoveToken':
+      add(1, request.value || request.token)
+      break
+    case 'CreateToken':
+      addPresent(1, String(request.rootDir || '/'))
+      addNested(2, encodeTokenPermissions((request.permissions || {}) as Record<string, unknown>))
+      add(3, request.friendlyName || request.friendly_name)
+      if (request.expiresIn !== undefined || request.expires_in !== undefined) addPresent(4, request.expiresIn ?? request.expires_in)
+      if (request.enableGrpcLog !== undefined) addPresent(5, request.enableGrpcLog)
+      if (request.enableStreamFileLog !== undefined) addPresent(6, request.enableStreamFileLog)
+      break
+    case 'ModifyToken':
+      add(1, request.token)
+      if (request.rootDir !== undefined) addPresent(2, String(request.rootDir))
+      if (request.permissions && typeof request.permissions === 'object') addNested(3, encodeTokenPermissions(request.permissions as Record<string, unknown>))
+      if (request.friendlyName !== undefined || request.friendly_name !== undefined) addPresent(4, String(request.friendlyName ?? request.friendly_name))
+      if (request.expiresIn !== undefined || request.expires_in !== undefined) addPresent(5, request.expiresIn ?? request.expires_in)
+      if (request.enableGrpcLog !== undefined) addPresent(6, request.enableGrpcLog)
+      if (request.enableStreamFileLog !== undefined) addPresent(7, request.enableStreamFileLog)
+      break
+    case 'LoginWith2FA':
+      add(1, request.userName)
+      add(2, request.password)
+      add(3, request.totpCode || request.totp_code)
+      addPresent(4, Boolean(request.synDataToCloud))
+      addProxy(5, request.cloudfsProxy)
+      break
+    case 'Setup2FA':
+      add(1, request.password)
+      break
+    case 'Enable2FA':
+    case 'Disable2FA':
+    case 'GetRecoveryCodes':
+    case 'RegenerateRecoveryCodes':
+      add(1, request.totpCode || request.totp_code)
+      break
+    case 'SendDisable2FAEmail':
+      add(1, request.email)
+      addProxy(2, request.cloudfsProxy)
+      break
+    case 'Disable2FAByEmail':
+      add(1, request.disableCode || request.disable_code)
+      add(2, request.password)
+      addProxy(3, request.cloudfsProxy)
+      break
+    case 'UnbindDevice':
+      add(1, request.password)
+      add(2, request.totpCode || request.totp_code)
+      break
+    case 'RevokeSession':
+      add(1, request.sessionId || request.session_id)
+      break
+    case 'DeleteAccount':
+      add(1, request.deleteCode || request.delete_code)
+      add(2, request.password)
+      add(3, request.totpCode || request.totp_code)
+      addPresent(4, Boolean(request.forfeitBalance ?? request.forfeit_balance))
+      break
+    case 'APILogin115OpenOAuth':
+    case 'APILoginGuangYaPanOAuth':
+    case 'ApiLoginXunleiOpenOAuth':
+    case 'ApiLogin123panOAuth':
+      add(1, request.refreshToken || request.refresh_token)
+      add(2, request.accessToken || request.access_token)
+      add(3, request.expiresIn || request.expires_in)
+      addProxy(4, request.apiProxy)
+      addProxy(5, request.dataProxy)
+      break
+    case 'APILogin115OpenQRCode':
+    case 'APILoginGuangYaPanQRCode':
+      addProxy(1, request.apiProxy)
+      addProxy(2, request.dataProxy)
+      break
+    case 'APILoginS3':
+      add(1, request.accessKeyId)
+      add(2, request.secretAccessKey)
+      add(3, request.region)
+      add(4, request.bucket)
+      add(5, request.endpoint)
+      addPresent(6, Boolean(request.pathStyle))
+      addPresent(7, Boolean(request.doNotSyncToCloud))
+      if (request.signatureVersion !== undefined) addPresent(8, request.signatureVersion)
+      addProxy(9, request.apiProxy)
+      addProxy(10, request.dataProxy)
+      break
+    case 'APILoginCloudDrive':
+      add(1, request.grpcUrl)
+      add(2, request.token)
+      addPresent(3, Boolean(request.insecureTls))
+      addPresent(4, Boolean(request.doNotSyncToCloud))
+      addProxy(5, request.apiProxy)
+      addProxy(6, request.dataProxy)
+      break
+    case 'APILoginSftp':
+      add(1, request.host)
+      addPresent(2, Number(request.port || 22))
+      add(3, request.userName)
+      add(4, request.password)
+      add(5, request.privateKey)
+      add(6, request.passphrase)
+      add(7, request.rootPath)
+      addPresent(8, Boolean(request.doNotSyncToCloud))
+      addProxy(9, request.apiProxy)
+      addProxy(10, request.dataProxy)
+      break
+    case 'APILoginFtp':
+      add(1, request.host)
+      addPresent(2, Number(request.port || 21))
+      add(3, request.userName)
+      add(4, request.password)
+      addPresent(5, Boolean(request.useTls))
+      add(6, request.rootPath)
+      addPresent(7, Boolean(request.doNotSyncToCloud))
+      addProxy(8, request.apiProxy)
+      addProxy(9, request.dataProxy)
+      break
+    case 'APILoginSmb':
+      add(1, request.server)
+      add(2, request.share)
+      addPresent(3, Number(request.port || 445))
+      add(4, request.userName)
+      add(5, request.password)
+      add(6, request.workgroup)
+      add(7, request.rootPath)
+      addPresent(8, Boolean(request.doNotSyncToCloud))
+      addProxy(9, request.apiProxy)
+      addProxy(10, request.dataProxy)
+      break
+    case 'DiscoverSmbShares':
+      add(1, request.server)
+      addPresent(2, Number(request.port || 445))
+      add(3, request.userName)
+      add(4, request.password)
+      add(5, request.workgroup)
+      break
+    case 'CreateOAuthState':
+      add(1, request.oauthType)
+      add(2, request.returnUrl)
+      add(3, request.deviceId)
+      add(4, request.codeVerifier)
+      break
+    case 'GetOfflineQuotaInfo':
+      add(1, request.cloudName)
+      add(2, request.cloudAccountId)
+      add(3, request.path)
+      break
+    case 'ClearOfflineFiles':
+      add(1, request.cloudName)
+      add(2, request.cloudAccountId)
+      addPresent(3, Number(request.filter || 0))
+      addPresent(4, Boolean(request.deleteFiles))
+      add(5, request.path)
+      break
+    case 'RestartOfflineTask':
+      add(1, request.cloudName)
+      add(2, request.cloudAccountId)
+      add(3, request.infoHash)
+      add(4, request.url)
+      add(5, request.parentId)
+      add(6, request.path)
+      break
+    case 'StartRemoteUpload': {
+      add(1, request.filePath || request.file_path)
+      addPresent(2, Number(request.fileSize ?? request.file_size ?? 0))
+      const hashes = (request.knownHashes || request.known_hashes || {}) as Record<string, unknown>
+      for (const [hashType, hashValue] of Object.entries(hashes)) addNested(3, Buffer.concat([encodePresentField(1, Number(hashType)), encodePresentField(2, String(hashValue))]))
+      addPresent(4, Boolean(request.clientCanCalculateHashes ?? request.client_can_calculate_hashes))
+      break
+    }
+    case 'RemoteUploadControl':
+      add(1, request.uploadId || request.upload_id)
+      addNested(request.action === 'cancel' ? 2 : request.action === 'pause' ? 3 : 4, Buffer.alloc(0))
+      break
+    case 'RemoteUploadChannel':
+      add(1, request.deviceId || request.device_id)
+      break
+    case 'RemoteReadData':
+      add(1, request.uploadId || request.upload_id)
+      addPresent(3, Number(request.offset || 0))
+      addPresent(4, Number(request.length || 0))
+      addPresent(5, Boolean(request.lazyRead ?? request.lazy_read))
+      addBytes(6, request.data)
+      addPresent(7, Boolean(request.isLastChunk ?? request.is_last_chunk))
+      break
+    case 'RemoteHashProgress':
+      add(1, request.uploadId || request.upload_id)
+      addPresent(2, Number(request.bytesHashed ?? request.bytes_hashed ?? 0))
+      addPresent(3, Number(request.totalBytes ?? request.total_bytes ?? 0))
+      addPresent(4, Number(request.hashType ?? request.hash_type ?? 0))
+      add(5, request.hashValue || request.hash_value)
+      add(6, request.blockHashes || request.block_hashes)
+      break
+    case 'SetDiskCacheEvictionStrategy':
+      addPresent(1, Number(request.strategy || 0))
+      break
+    case 'SetFolderDiskCache':
+      add(1, request.path)
+      addPresent(2, Number(request.maxFileSize || 0))
+      addPresent(3, Number(request.minFileSize || 0))
+      addPresent(4, Number(request.extensionFilterMode || 0))
+      add(5, request.extensions)
+      addPresent(6, request.enabled !== false)
+      break
+    case 'RemoveFolderDiskCache':
+    case 'ForceExpireDirCache':
+      add(1, request.path)
+      break
+    case 'SetSystemSettings':
+      fields.push(encodeSystemSettings(request))
+      break
+    case 'SetDirCacheTimeSecs':
+      add(1, request.path)
+      if (request.dirCacheTimeToLiveSecs !== undefined) addPresent(2, request.dirCacheTimeToLiveSecs)
+      break
+    case 'GetEffectiveDirCacheTimeSecs':
+      add(1, request.path)
+      break
+    case 'GetOpenFileTable':
+      addPresent(1, Boolean(request.includeDir))
+      break
+    case 'GetReferencedEntryPaths':
+      add(1, request.path)
+      break
+    case 'SetWebServerConfig':
+      if (request.httpPort !== undefined || request.http_port !== undefined) addPresent(1, request.httpPort ?? request.http_port)
+      if (request.httpsPort !== undefined || request.https_port !== undefined) addPresent(2, request.httpsPort ?? request.https_port)
+      add(3, request.certFile || request.cert_file)
+      add(4, request.keyFile || request.key_file)
+      if (request.enableHttps !== undefined || request.enable_https !== undefined) addPresent(5, request.enableHttps ?? request.enable_https)
+      add(6, request.certContent || request.cert_content)
+      add(7, request.keyContent || request.key_content)
       break
     case 'AddDavUser':
       add(1, request.userName)
@@ -872,7 +1335,16 @@ const decodeMountPoint = (buffer: Buffer): RpcResponse => {
 
 const decodeUploadFile = (buffer: Buffer): RpcResponse => {
   const fields = parseFields(buffer)
-  return { key: text(values(fields, 1).at(0)), destPath: text(values(fields, 2).at(0)), size: integer(values(fields, 3).at(0)), transferedBytes: integer(values(fields, 4).at(0)), status: text(values(fields, 5).at(0)), errorMessage: text(values(fields, 6).at(0)) }
+  return {
+    key: text(values(fields, 1).at(0)),
+    destPath: text(values(fields, 2).at(0)),
+    size: integer(values(fields, 3).at(0)),
+    transferedBytes: integer(values(fields, 4).at(0)),
+    status: text(values(fields, 5).at(0)),
+    errorMessage: text(values(fields, 6).at(0)),
+    operatorType: Number(values(fields, 7).at(0) || 0),
+    statusEnum: Number(values(fields, 8).at(0) || 0)
+  }
 }
 
 const decodeDownloadFile = (buffer: Buffer): RpcResponse => {
@@ -894,6 +1366,32 @@ const decodeBackupDestination = (buffer: Buffer): RpcResponse => {
   return { destinationPath: text(values(fields, 1).at(0)), isEnabled: bool(values(fields, 2).at(0)) }
 }
 
+const decodeBackupRule = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const typed = ([1, 2, 3, 4] as const).find((number) => values(fields, number).length)
+  const kind = typed === 1 ? 'extensions' : typed === 2 ? 'fileNames' : typed === 3 ? 'regex' : 'minSize'
+  return {
+    kind,
+    value: typed === 4 ? integer(values(fields, 4).at(0)) : text(values(fields, typed || 1).at(0)),
+    isEnabled: bool(values(fields, 100).at(0)),
+    isBlackList: bool(values(fields, 101).at(0)),
+    applyToFolder: bool(values(fields, 102).at(0)),
+    applyToFile: values(fields, 103).length ? bool(values(fields, 103).at(0)) : true
+  }
+}
+
+const decodeTimeSchedule = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const days = values(fields, 5).find(Buffer.isBuffer)
+  return {
+    isEnabled: bool(values(fields, 1).at(0)),
+    hour: Number(values(fields, 2).at(0) || 0),
+    minute: Number(values(fields, 3).at(0) || 0),
+    second: Number(values(fields, 4).at(0) || 0),
+    daysOfWeek: days ? values(parseFields(days as Buffer), 1).map(Number) : []
+  }
+}
+
 const decodeBackup = (buffer: Buffer): RpcResponse => {
   const fields = parseFields(buffer)
   return {
@@ -901,9 +1399,22 @@ const decodeBackup = (buffer: Buffer): RpcResponse => {
     destinations: values(fields, 2)
       .filter(Buffer.isBuffer)
       .map((value) => decodeBackupDestination(value as Buffer)),
+    fileBackupRules: values(fields, 3)
+      .filter(Buffer.isBuffer)
+      .map((value) => decodeBackupRule(value as Buffer)),
+    fileReplaceRule: Number(values(fields, 4).at(0) || 0),
+    fileDeleteRule: Number(values(fields, 5).at(0) || 0),
+    fileCompletionRule: Number(values(fields, 13).at(0) || 0),
     isEnabled: bool(values(fields, 6).at(0)),
     fileSystemWatchEnabled: bool(values(fields, 7).at(0)),
-    walkingThroughIntervalSecs: integer(values(fields, 8).at(0))
+    walkingThroughIntervalSecs: integer(values(fields, 8).at(0)),
+    forceWalkingThroughOnStart: bool(values(fields, 9).at(0)),
+    timeSchedules: values(fields, 10)
+      .filter(Buffer.isBuffer)
+      .map((value) => decodeTimeSchedule(value as Buffer)),
+    isTimeSchedulesEnabled: bool(values(fields, 11).at(0)),
+    syncDeleteFromDest: bool(values(fields, 14).at(0)),
+    dontStartScanAfterAdd: bool(values(fields, 15).at(0))
   }
 }
 
@@ -922,6 +1433,7 @@ const decodeOfflineFile = (buffer: Buffer): RpcResponse => {
     status: Number(values(fields, 4).at(0) || 0),
     infoHash: text(values(fields, 5).at(0)),
     fileId: text(values(fields, 6).at(0)),
+    addTime: integer(values(fields, 7).at(0)),
     parentId: text(values(fields, 8).at(0)),
     percentDone: Number(values(fields, 9).at(0) || 0),
     peers: Number(values(fields, 10).at(0) || 0)
@@ -930,6 +1442,8 @@ const decodeOfflineFile = (buffer: Buffer): RpcResponse => {
 
 const decodeCloudApiConfig = (buffer: Buffer): RpcResponse => {
   const fields = parseFields(buffer)
+  const apiProxy = values(fields, 8).find(Buffer.isBuffer)
+  const dataProxy = values(fields, 9).find(Buffer.isBuffer)
   return {
     maxDownloadThreads: Number(values(fields, 1).at(0) || 0),
     minReadLengthKB: integer(values(fields, 2).at(0)),
@@ -937,13 +1451,210 @@ const decodeCloudApiConfig = (buffer: Buffer): RpcResponse => {
     defaultReadLengthKB: integer(values(fields, 4).at(0)),
     maxBufferPoolSizeMB: integer(values(fields, 5).at(0)),
     maxQueriesPerSecond: doubleValue(values(fields, 6).at(0)),
-    forceIpv4: bool(values(fields, 7).at(0))
+    forceIpv4: bool(values(fields, 7).at(0)),
+    apiProxy: apiProxy ? decodeProxyInfo(apiProxy as Buffer) : undefined,
+    dataProxy: dataProxy ? decodeProxyInfo(dataProxy as Buffer) : undefined,
+    customUserAgent: text(values(fields, 10).at(0)),
+    maxUploadThreads: Number(values(fields, 11).at(0) || 0),
+    insecureTls: bool(values(fields, 12).at(0)),
+    useHttpDownload: bool(values(fields, 13).at(0)),
+    supportDirectLink: bool(values(fields, 14).at(0)),
+    supportDirectDownloadUrl: bool(values(fields, 15).at(0)),
+    maxDownloadThreadsLimit: Number(values(fields, 18).at(0) || 0),
+    maxBufferPoolSizeMBLimit: integer(values(fields, 19).at(0)),
+    maxQueriesPerSecondLimit: doubleValue(values(fields, 20).at(0)),
+    useMultithreadDownloaderForCopy: bool(values(fields, 21).at(0))
   }
+}
+
+const decodeTokenPermissions = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  return Object.fromEntries(TOKEN_PERMISSION_FIELDS.map((name, index) => [name, bool(values(fields, index + 1).at(0))]))
+}
+
+const decodeTokenInfo = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const permissions = values(fields, 3).find(Buffer.isBuffer)
+  return {
+    token: text(values(fields, 1).at(0)),
+    rootDir: text(values(fields, 2).at(0)),
+    permissions: permissions ? decodeTokenPermissions(permissions as Buffer) : {},
+    expiresIn: integer(values(fields, 4).at(0)),
+    friendlyName: text(values(fields, 5).at(0)),
+    enableGrpcLog: bool(values(fields, 6).at(0)),
+    enableStreamFileLog: bool(values(fields, 7).at(0))
+  }
+}
+
+const decodeCopyTask = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  return {
+    taskMode: Number(values(fields, 2).at(0) || 0),
+    sourcePath: text(values(fields, 3).at(0)),
+    destPath: text(values(fields, 4).at(0)),
+    status: Number(values(fields, 5).at(0) || 0),
+    totalFolders: integer(values(fields, 6).at(0)),
+    totalFiles: integer(values(fields, 7).at(0)),
+    failedFolders: integer(values(fields, 8).at(0)),
+    failedFiles: integer(values(fields, 9).at(0)),
+    uploadedFiles: integer(values(fields, 10).at(0)),
+    cancelledFiles: integer(values(fields, 11).at(0)),
+    totalBytes: integer(values(fields, 12).at(0)),
+    uploadedBytes: integer(values(fields, 13).at(0)),
+    paused: bool(values(fields, 14).at(0)),
+    skippedFiles: integer(values(fields, 16).at(0))
+  }
+}
+
+const decodeMergeTask = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  return {
+    sourcePath: text(values(fields, 1).at(0)),
+    destPath: text(values(fields, 2).at(0)),
+    status: Number(values(fields, 3).at(0) || 0),
+    mergedFiles: integer(values(fields, 4).at(0)),
+    mergedFolders: integer(values(fields, 5).at(0)),
+    errorMessage: text(values(fields, 8).at(0)),
+    conflictPolicy: Number(values(fields, 9).at(0) || 0),
+    operationType: Number(values(fields, 10).at(0) || 0)
+  }
+}
+
+const decodeSession = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  return {
+    id: text(values(fields, 1).at(0)),
+    deviceId: text(values(fields, 2).at(0)),
+    deviceName: text(values(fields, 3).at(0)),
+    deviceOsType: text(values(fields, 4).at(0)),
+    createdAt: text(values(fields, 5).at(0)),
+    lastUsedAt: text(values(fields, 6).at(0)),
+    expiresAt: text(values(fields, 7).at(0)),
+    lastIpAddress: text(values(fields, 8).at(0))
+  }
+}
+
+const decodeStringList = (buffer: Buffer): string[] =>
+  values(parseFields(buffer), 1)
+    .filter(Buffer.isBuffer)
+    .map((value) => text(value))
+
+const decodeProxyInfo = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  return { proxyType: Number(values(fields, 1).at(0) || 0), host: text(values(fields, 2).at(0)), port: Number(values(fields, 3).at(0) || 0), username: text(values(fields, 4).at(0)) }
+}
+
+const decodeSystemSettings = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const result: RpcResponse = {}
+  for (const [key, [number, kind]] of Object.entries(SYSTEM_SETTING_FIELDS)) {
+    const value = values(fields, number).at(0)
+    if (value === undefined) continue
+    result[key] = kind === 'double' ? doubleValue(value) : kind === 'bool' ? bool(value) : kind === 'uint' ? integer(value) : kind === 'list' ? decodeStringList(value as Buffer) : kind === 'proxy' ? decodeProxyInfo(value as Buffer) : text(value)
+  }
+  return result
+}
+
+const decodeMetadata = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const metadata: Record<string, string> = {}
+  for (const value of values(fields, 1).filter(Buffer.isBuffer)) {
+    const entry = parseFields(value as Buffer)
+    metadata[text(values(entry, 1).at(0))] = text(values(entry, 2).at(0))
+  }
+  return { metadata }
+}
+
+const decodeTimestamp = (buffer: Buffer): string => {
+  const fields = parseFields(buffer)
+  const seconds = Number(values(fields, 1).at(0) || 0)
+  return seconds ? new Date(seconds * 1000).toISOString() : ''
+}
+
+const decodeOpenFileTable = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const openFiles: Record<string, string> = {}
+  for (const value of values(fields, 1).filter(Buffer.isBuffer)) {
+    const entry = parseFields(value as Buffer)
+    openFiles[String(values(entry, 1).at(0) || 0)] = text(values(entry, 2).at(0))
+  }
+  return { openFiles, localOpenFileCount: integer(values(fields, 2).at(0)) }
+}
+
+const decodeDirCacheTable = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const dirCache: Record<string, RpcResponse> = {}
+  for (const value of values(fields, 1).filter(Buffer.isBuffer)) {
+    const entry = parseFields(value as Buffer)
+    const item = values(entry, 2).find(Buffer.isBuffer)
+    if (!item) continue
+    const nested = parseFields(item as Buffer)
+    const inserted = values(nested, 1).find(Buffer.isBuffer)
+    dirCache[text(values(entry, 1).at(0))] = { insertTime: inserted ? decodeTimestamp(inserted as Buffer) : '', timeToLiveSecs: integer(values(nested, 2).at(0)), referencedSubfileLen: integer(values(nested, 3).at(0)) }
+  }
+  return { dirCache }
+}
+
+const decodeRemoteUploadChannel = (buffer: Buffer): RpcResponse => {
+  const fields = parseFields(buffer)
+  const read = values(fields, 2).find(Buffer.isBuffer)
+  const hash = values(fields, 3).find(Buffer.isBuffer)
+  const status = values(fields, 4).find(Buffer.isBuffer)
+  if (read) {
+    const nested = parseFields(read as Buffer)
+    return { uploadId: text(values(fields, 1).at(0)), type: 'read', offset: integer(values(nested, 1).at(0)), length: integer(values(nested, 2).at(0)), lazyRead: bool(values(nested, 3).at(0)) }
+  }
+  if (hash) {
+    const nested = parseFields(hash as Buffer)
+    return { uploadId: text(values(fields, 1).at(0)), type: 'hash', hashType: Number(values(nested, 2).at(0) || 0), blockSize: Number(values(nested, 3).at(0) || 0) }
+  }
+  if (status) {
+    const nested = parseFields(status as Buffer)
+    return { uploadId: text(values(fields, 1).at(0)), type: 'status', status: Number(values(nested, 1).at(0) || 0), errorMessage: text(values(nested, 2).at(0)) }
+  }
+  return { uploadId: text(values(fields, 1).at(0)), type: 'unknown' }
 }
 
 const decodeResponse = (method: string, buffer: Buffer): RpcResponse => {
   const fields = parseFields(buffer)
-  if (method === 'GetToken') return { success: bool(values(fields, 1).at(0)), errorMessage: text(values(fields, 2).at(0)), token: text(values(fields, 3).at(0)) }
+  if (method === 'GetToken' || method === 'LoginWith2FA') return { success: bool(values(fields, 1).at(0)), errorMessage: text(values(fields, 2).at(0)), token: text(values(fields, 3).at(0)) }
+  if (method === 'CreateToken' || method === 'ModifyToken' || method === 'GetApiTokenInfo') return decodeTokenInfo(buffer)
+  if (method === 'ListTokens')
+    return {
+      tokens: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => decodeTokenInfo(value as Buffer))
+    }
+  if (method === 'GetCopyTasks')
+    return {
+      copyTasks: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => decodeCopyTask(value as Buffer))
+    }
+  if (method === 'GetMergeTasks')
+    return {
+      mergeTasks: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => decodeMergeTask(value as Buffer))
+    }
+  if (method === 'RemoveAllCopyTasks' || method === 'RemoveCopyTasks' || method === 'PauseAllCopyTasks' || method === 'PauseCopyTasks' || method === 'ResumeAllCopyTasks' || method === 'ResumeCopyTasks')
+    return { success: bool(values(fields, 1).at(0)), affectedCount: Number(values(fields, 2).at(0) || 0), errorMessage: text(values(fields, 3).at(0)) }
+  if (method === 'Check2FAStatus') return { enabled: bool(values(fields, 1).at(0)) }
+  if (method === 'Setup2FA') return { secret: text(values(fields, 1).at(0)), qrCodeDataUrl: text(values(fields, 2).at(0)), manualEntryKey: text(values(fields, 3).at(0)) }
+  if (method === 'Enable2FA' || method === 'GetRecoveryCodes' || method === 'RegenerateRecoveryCodes')
+    return {
+      recoveryCodes: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => text(value))
+    }
+  if (method === 'GetSessions')
+    return {
+      sessions: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => decodeSession(value as Buffer))
+    }
+  if (method === 'SendDeleteAccountEmail')
+    return { email: text(values(fields, 1).at(0)), balance: doubleValue(values(fields, 2).at(0)), hasActiveSubscription: bool(values(fields, 3).at(0)), boundDeviceCount: Number(values(fields, 4).at(0) || 0), expiresInMinutes: Number(values(fields, 5).at(0) || 0) }
   if (method === 'GetSystemInfo') {
     return { isLogin: bool(values(fields, 1).at(0)), userName: text(values(fields, 2).at(0)), systemReady: bool(values(fields, 3).at(0)), systemMessage: text(values(fields, 4).at(0)), hasError: bool(values(fields, 5).at(0)) }
   }
@@ -992,10 +1703,15 @@ const decodeResponse = (method: string, buffer: Buffer): RpcResponse => {
       totalCount: Number(values(fields, 1).at(0) || 0),
       uploadFiles: values(fields, 2)
         .filter(Buffer.isBuffer)
-        .map((value) => decodeUploadFile(value as Buffer))
+        .map((value) => decodeUploadFile(value as Buffer)),
+      globalBytesPerSecond: doubleValue(values(fields, 3).at(0)),
+      totalBytes: integer(values(fields, 4).at(0)),
+      finishedBytes: integer(values(fields, 5).at(0)),
+      totalCountFiltered: Number(values(fields, 6).at(0) || 0)
     }
   if (method === 'GetAllTasksCount') return { downloadCount: Number(values(fields, 1).at(0) || 0), uploadCount: Number(values(fields, 2).at(0) || 0), copyTaskCount: Number(values(fields, 6).at(0) || 0) }
   if (method === 'GetRunningInfo') return { cpuUsage: Number(values(fields, 1).at(0) || 0), memUsageKB: integer(values(fields, 2).at(0)), uptime: Number(values(fields, 3).at(0) || 0) }
+  if (method === 'CanAddMoreCloudApis' || method === 'CanAddMoreBackups') return decodeOperationResult(buffer)
   if (method === 'GetAllCloudApis') {
     return {
       apis: values(fields, 1)
@@ -1010,6 +1726,8 @@ const decodeResponse = (method: string, buffer: Buffer): RpcResponse => {
             supportMultiThreadUploading: bool(values(cloudFields, 5).at(0)),
             supportQpsLimit: bool(values(cloudFields, 6).at(0)),
             eventListenerRunning: bool(values(cloudFields, 7).at(0)),
+            hasPromotions: bool(values(cloudFields, 8).at(0)),
+            promotionTitle: text(values(cloudFields, 9).at(0)),
             path: text(values(cloudFields, 10).at(0)),
             supportHttpDownload: bool(values(cloudFields, 11).at(0)),
             readOnly: bool(values(cloudFields, 12).at(0))
@@ -1026,13 +1744,22 @@ const decodeResponse = (method: string, buffer: Buffer): RpcResponse => {
     method === 'ApiLoginGoogleDriveOAuth' ||
     method === 'ApiLoginGoogleDriveRefreshToken' ||
     method === 'ApiLoginXunleiOAuth' ||
+    method === 'ApiLoginXunleiOpenOAuth' ||
+    method === 'ApiLogin123panOAuth' ||
+    method === 'APILogin115OpenOAuth' ||
+    method === 'APILoginGuangYaPanOAuth' ||
+    method === 'APILoginS3' ||
+    method === 'APILoginCloudDrive' ||
+    method === 'APILoginSftp' ||
+    method === 'APILoginFtp' ||
+    method === 'APILoginSmb' ||
     method === 'APILoginPikPak' ||
     method === 'APILoginWebDav' ||
     method === 'APIAddLocalFolder'
   )
     return { success: bool(values(fields, 1).at(0)), errorMessage: text(values(fields, 2).at(0)) }
   if (method === 'GetCloudAPIConfig') return decodeCloudApiConfig(buffer)
-  if (method === 'APILogin115QRCode' || method === 'APILoginAliyunDriveQRCode' || method === 'APILogin189QRCode') return { messageType: Number(values(fields, 1).at(0) || 0), message: text(values(fields, 2).at(0)) }
+  if (method === 'APILogin115QRCode' || method === 'APILoginAliyunDriveQRCode' || method === 'APILogin189QRCode' || method === 'APILogin115OpenQRCode' || method === 'APILoginGuangYaPanQRCode') return { messageType: Number(values(fields, 1).at(0) || 0), message: text(values(fields, 2).at(0)) }
   if (method === 'ListOfflineFilesByPath')
     return {
       offlineFiles: values(fields, 1)
@@ -1058,6 +1785,81 @@ const decodeResponse = (method: string, buffer: Buffer): RpcResponse => {
   if (method === 'CreateFile') return { fileHandle: integer(values(fields, 1).at(0)) }
   if (method === 'WriteToFile') return { bytesWritten: integer(values(fields, 1).at(0)) }
   if (method === 'GetDownloadUrlPath') return { downloadUrlPath: text(values(fields, 1).at(0)), expiresIn: integer(values(fields, 2).at(0)), directUrl: text(values(fields, 3).at(0)), userAgent: text(values(fields, 4).at(0)) }
+  if (method === 'BackupGetStatus') return decodeBackupStatus(buffer)
+  if (method === 'GetFileDetailProperties')
+    return { totalFileCount: integer(values(fields, 1).at(0)), totalFolderCount: integer(values(fields, 2).at(0)), totalSize: integer(values(fields, 3).at(0)), isFaved: bool(values(fields, 4).at(0)), isShared: bool(values(fields, 5).at(0)), originalPath: text(values(fields, 6).at(0)) }
+  if (method === 'GetMetaData') return decodeMetadata(buffer)
+  if (method === 'GetOriginalPath') return { result: text(values(fields, 1).at(0)) }
+  if (method === 'GetOfflineQuotaInfo') return { total: Number(values(fields, 1).at(0) || 0), used: Number(values(fields, 2).at(0) || 0), left: Number(values(fields, 3).at(0) || 0) }
+  if (method === 'StartRemoteUpload') return { uploadId: text(values(fields, 1).at(0)) }
+  if (method === 'RemoteReadData') return { success: bool(values(fields, 1).at(0)), errorMessage: text(values(fields, 2).at(0)), bytesReceived: integer(values(fields, 3).at(0)), isLastChunk: bool(values(fields, 4).at(0)) }
+  if (method === 'RemoteUploadChannel') return decodeRemoteUploadChannel(buffer)
+  if (method === 'GetRuntimeInfo') return { productName: text(values(fields, 1).at(0)), productVersion: text(values(fields, 2).at(0)), cloudApiVersion: text(values(fields, 3).at(0)), osInfo: text(values(fields, 4).at(0)) }
+  if (method === 'GetFileBufferDiskCacheStats')
+    return {
+      enabled: bool(values(fields, 1).at(0)),
+      totalBytes: integer(values(fields, 2).at(0)),
+      maxBytes: integer(values(fields, 3).at(0)),
+      entryCount: integer(values(fields, 4).at(0)),
+      segmentCount: integer(values(fields, 5).at(0)),
+      rootDir: text(values(fields, 6).at(0)),
+      scanCompleted: bool(values(fields, 7).at(0)),
+      evictionStrategy: Number(values(fields, 8).at(0) || 0)
+    }
+  if (method === 'ListDiskCacheFolders')
+    return {
+      folders: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => {
+          const item = parseFields(value as Buffer)
+          return {
+            path: text(values(item, 1).at(0)),
+            maxFileSize: integer(values(item, 2).at(0)),
+            minFileSize: integer(values(item, 3).at(0)),
+            extensionFilterMode: Number(values(item, 4).at(0) || 0),
+            extensions: values(item, 5)
+              .filter(Buffer.isBuffer)
+              .map((entry) => text(entry)),
+            enabled: bool(values(item, 6).at(0))
+          }
+        })
+    }
+  if (method === 'GetSystemSettings') return decodeSystemSettings(buffer)
+  if (method === 'GetEffectiveDirCacheTimeSecs') return { dirCacheTimeToLiveSecs: integer(values(fields, 1).at(0)), source: text(values(fields, 2).at(0)) }
+  if (method === 'GetDirCacheDbSize') return { sizeBytes: integer(values(fields, 1).at(0)) }
+  if (method === 'GetOpenFileTable') return decodeOpenFileTable(buffer)
+  if (method === 'GetDirCacheTable') return decodeDirCacheTable(buffer)
+  if (method === 'GetReferencedEntryPaths')
+    return {
+      paths: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => text(value))
+    }
+  if (method === 'GetTempFileTable')
+    return {
+      count: integer(values(fields, 1).at(0)),
+      tempFiles: values(fields, 2)
+        .filter(Buffer.isBuffer)
+        .map((value) => text(value))
+    }
+  if (method === 'GetServiceCapabilities') return { canRestart: bool(values(fields, 1).at(0)), canUpdate: bool(values(fields, 2).at(0)) }
+  if (method === 'GetWebServerConfig') return { httpPort: Number(values(fields, 1).at(0) || 0), httpsPort: Number(values(fields, 2).at(0) || 0), certFile: text(values(fields, 3).at(0)), keyFile: text(values(fields, 4).at(0)), enableHttps: bool(values(fields, 5).at(0)) }
+  if (method === 'DiscoverSmbServers')
+    return {
+      servers: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => {
+          const item = parseFields(value as Buffer)
+          return { name: text(values(item, 1).at(0)), address: text(values(item, 2).at(0)) }
+        })
+    }
+  if (method === 'DiscoverSmbShares')
+    return {
+      shareNames: values(fields, 1)
+        .filter(Buffer.isBuffer)
+        .map((value) => text(value))
+    }
+  if (method === 'CreateOAuthState') return { success: bool(values(fields, 1).at(0)), errorMessage: text(values(fields, 2).at(0)), state: text(values(fields, 3).at(0)), expiresIn: integer(values(fields, 4).at(0)) }
   if (method === 'GetDavUser') return decodeDavUser(buffer)
   if (method === 'GetDavServerConfig') {
     return {
@@ -1089,6 +1891,67 @@ const frameGrpc = (payload: Buffer): Buffer => {
 class Cd2Client {
   constructor(private readonly getConfig: () => Promise<Cd2Config>) {}
   close(): void {}
+
+  async consumeServerStream(method: string, request: Record<string, unknown>, onMessage: (message: RpcResponse) => Promise<boolean | undefined>): Promise<void> {
+    const config = await this.getConfig()
+    if (!config.endpoint) throw new Error(`请先配置 CD2 地址，使用 ${commandName} conf endpoint ...`)
+    const parsed = new URL(config.endpoint)
+    const session = http2.connect(parsed.origin, parsed.protocol === 'https:' ? { rejectUnauthorized: true } : undefined)
+    await new Promise<void>((resolve, reject) => {
+      let pending = Buffer.alloc(0)
+      let grpcStatus = '0'
+      let settled = false
+      let chain = Promise.resolve()
+      const timer = setTimeout(() => finish(new Error('CD2 远程上传通道超时')), 60 * 60 * 1000)
+      const finish = (error?: Error): void => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        stream.close()
+        session.close()
+        if (error) reject(error)
+        else if (grpcStatus !== '0') reject(new Error(`CD2 gRPC 错误状态：${grpcStatus}`))
+        else resolve()
+      }
+      session.on('error', (error) => finish(error))
+      const headers: Record<string, string> = {
+        ':method': 'POST',
+        ':path': `/clouddrive.CloudDriveFileSrv/${method}`,
+        'content-type': 'application/grpc',
+        te: 'trailers',
+        'grpc-accept-encoding': 'identity'
+      }
+      if (config.token) headers.authorization = `Bearer ${config.token}`
+      const stream = session.request(headers)
+      stream.on('response', (responseHeaders) => {
+        if (Number(responseHeaders[':status'] || 200) >= 400) finish(new Error(`CD2 HTTP 状态异常：${responseHeaders[':status']}`))
+        if (responseHeaders['grpc-status']) grpcStatus = String(responseHeaders['grpc-status'])
+      })
+      stream.on('trailers', (trailers) => {
+        if (trailers['grpc-status']) grpcStatus = String(trailers['grpc-status'])
+      })
+      stream.on('data', (chunk: Buffer) => {
+        pending = Buffer.concat([pending, chunk])
+        while (pending.length >= 5) {
+          if (pending[0] !== 0) return finish(new Error('CD2 返回了不支持的压缩 gRPC 帧'))
+          const length = pending.readUInt32BE(1)
+          if (pending.length < length + 5) break
+          const payload = pending.subarray(5, length + 5)
+          pending = pending.subarray(length + 5)
+          chain = chain
+            .then(async () => {
+              if (settled) return
+              const keep = await onMessage(decodeResponse(method, payload))
+              if (keep === false) finish()
+            })
+            .catch((error: Error) => finish(error))
+        }
+      })
+      stream.on('end', () => chain.then(() => finish()).catch((error: Error) => finish(error)))
+      stream.on('error', (error) => finish(error))
+      stream.end(frameGrpc(encodeRequest(method, request)))
+    })
+  }
 
   private async request(method: string, request: Record<string, unknown>, streaming: boolean): Promise<RpcResponse[]> {
     const config = await this.getConfig()
@@ -1334,7 +2197,117 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 账户密码已重置' })
       return
     }
-    throw new Error(`用法：${commandName} account status|logout|register|reset-email|reset`)
+    if (action === 'delete-email') {
+      const result = await this.getClient().unary('SendDeleteAccountEmail')
+      await msg.edit({
+        text: htmlText(
+          [
+            '📧 <b>账户注销验证码已发送</b>',
+            `<b>邮箱：</b> ${htmlEscape(result.email || '当前账户邮箱')}`,
+            `<b>余额：</b> ${htmlEscape(String(result.balance || 0))}`,
+            `<b>绑定设备：</b> ${result.boundDeviceCount || 0}`,
+            `<b>有效期：</b> ${result.expiresInMinutes || 0} 分钟`,
+            result.hasActiveSubscription ? '❌ 存在有效订阅，需先取消订阅' : '⚠️ 注销不可恢复；确认时需要密码、验证码和可选 2FA。'
+          ].join('\n')
+        )
+      })
+      return
+    }
+    if (action === 'delete') {
+      if (!args[1] || !args[2] || !args.includes('confirm')) throw new Error(`用法：${commandName} account delete DELETE_CODE PASSWORD [TOTP] [forfeit] confirm`)
+      const optional = args.slice(3, -1)
+      await this.getClient().unary('DeleteAccount', { deleteCode: args[1], password: args[2], totpCode: optional.find((item) => /^\d{6}$/.test(item)), forfeitBalance: optional.includes('forfeit') })
+      await this.updateConfig({ token: '', accountUsername: '', accountPassword: '' })
+      await msg.edit({ text: '✅ CloudDrive2 账户已注销，本地账户和 Token 已清除' })
+      return
+    }
+    throw new Error(`用法：${commandName} account status|logout|register|reset-email|reset|delete-email|delete`)
+  }
+
+  private async handleTwoFactor(msg: MessageContext, args: string[]): Promise<void> {
+    const action = args[0]?.toLowerCase() || 'status'
+    if (action === 'status') {
+      const result = await this.getClient().unary('Check2FAStatus')
+      await msg.edit({ text: htmlText(['<b>🔐 两步验证</b>', `<b>已启用：</b> ${result.enabled ? '✅' : '❌'}`].join('\n')) })
+      return
+    }
+    if (action === 'setup') {
+      if (!args[1]) throw new Error(`用法：${commandName} 2fa setup PASSWORD`)
+      const result = await this.getClient().unary('Setup2FA', { password: args[1] })
+      await msg.edit({
+        text: htmlText(
+          ['<b>🔐 两步验证设置</b>', `<b>密钥：</b> <code>${htmlEscape(result.secret || result.manualEntryKey || '')}</code>`, `<b>手动输入：</b> <code>${htmlEscape(result.manualEntryKey || result.secret || '')}</code>`, `下一步：<code>${commandName} 2fa enable 6位验证码</code>`].join('\n')
+        )
+      })
+      return
+    }
+    if (action === 'enable' || action === 'recovery' || action === 'regenerate') {
+      if (!args[1]) throw new Error(`用法：${commandName} 2fa ${action} TOTP_CODE`)
+      const method = action === 'enable' ? 'Enable2FA' : action === 'recovery' ? 'GetRecoveryCodes' : 'RegenerateRecoveryCodes'
+      const result = await this.getClient().unary(method, { totpCode: args[1] })
+      const codes = (result.recoveryCodes || []) as string[]
+      await msg.edit({ text: htmlText([`✅ <b>${action === 'enable' ? '两步验证已启用' : '恢复码'}</b>`, ...codes.map((code) => `<code>${htmlEscape(code)}</code>`), codes.length ? '<i>请离线保存这些恢复码。</i>' : '操作成功'].join('\n')) })
+      return
+    }
+    if (action === 'disable') {
+      if (!args[1]) throw new Error(`用法：${commandName} 2fa disable TOTP_CODE`)
+      await this.getClient().unary('Disable2FA', { totpCode: args[1] })
+      await msg.edit({ text: '✅ 两步验证已关闭' })
+      return
+    }
+    if (action === 'login') {
+      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} 2fa login USER PASSWORD TOTP_CODE`)
+      const result = await this.getClient().unary('LoginWith2FA', { userName: args[1], password: args[2], totpCode: args[3], synDataToCloud: true })
+      if (!result.success || !result.token) throw new Error(result.errorMessage || '2FA 登录失败')
+      await this.updateConfig({ accountUsername: args[1], accountPassword: args[2], token: result.token })
+      await msg.edit({ text: '✅ 2FA 登录成功，Token 已保存' })
+      return
+    }
+    if (action === 'send-disable-email') {
+      if (!args[1]) throw new Error(`用法：${commandName} 2fa send-disable-email EMAIL`)
+      await this.getClient().unary('SendDisable2FAEmail', { email: args[1] })
+      await msg.edit({ text: '✅ 关闭 2FA 的恢复邮件已发送' })
+      return
+    }
+    if (action === 'disable-email') {
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} 2fa disable-email DISABLE_CODE PASSWORD`)
+      await this.getClient().unary('Disable2FAByEmail', { disableCode: args[1], password: args[2] })
+      await msg.edit({ text: '✅ 已通过邮件恢复流程关闭 2FA' })
+      return
+    }
+    if (action === 'unbind') {
+      if (!args[1]) throw new Error(`用法：${commandName} 2fa unbind PASSWORD [TOTP_CODE]`)
+      await this.getClient().unary('UnbindDevice', { password: args[1], totpCode: args[2] })
+      await msg.edit({ text: '✅ 当前设备已解绑' })
+      return
+    }
+    throw new Error(`用法：${commandName} 2fa status|setup|enable|disable|recovery|regenerate|login|send-disable-email|disable-email|unbind`)
+  }
+
+  private async handleSessions(msg: MessageContext, args: string[]): Promise<void> {
+    const action = args[0]?.toLowerCase() || 'list'
+    if (action === 'list') {
+      const result = await this.getClient().unary('GetSessions')
+      const sessions = (result.sessions || []) as RpcResponse[]
+      const lines = sessions.length
+        ? sessions.map((session, index) => `${index + 1}. <b>${htmlEscape(session.deviceName || session.deviceId || '未知设备')}</b> · ${htmlEscape(session.deviceOsType || '')}\n   ID：<code>${htmlEscape(session.id || '')}</code> · 最后使用：${htmlEscape(session.lastUsedAt || '未知')}`)
+        : ['没有活动会话']
+      await msg.edit({ text: htmlText(['<b>📱 CloudDrive2 会话</b>', '', ...lines].join('\n')) })
+      return
+    }
+    if (action === 'revoke') {
+      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} session revoke SESSION_ID confirm`)
+      await this.getClient().unary('RevokeSession', { sessionId: args[1] })
+      await msg.edit({ text: '✅ 会话已撤销' })
+      return
+    }
+    if (action === 'revoke-others') {
+      if (args[1]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} session revoke-others confirm`)
+      await this.getClient().unary('RevokeOtherSessions')
+      await msg.edit({ text: '✅ 其他会话已全部撤销' })
+      return
+    }
+    throw new Error(`用法：${commandName} session list|revoke|revoke-others`)
   }
 
   private async handleToken(msg: MessageContext, args: string[]): Promise<void> {
@@ -1353,7 +2326,77 @@ class Cd2Plugin extends Plugin {
       await this.handleLogin(msg)
       return
     }
-    throw new Error(`用法：${commandName} token show|clear|login`)
+    if (action === 'list') {
+      const result = await this.getClient().unary('ListTokens')
+      const tokens = (result.tokens || []) as RpcResponse[]
+      const lines = tokens.length
+        ? tokens.map(
+            (item, index) =>
+              `${index + 1}. <b>${htmlEscape(item.friendlyName || '未命名')}</b> · <code>${htmlEscape(maskToken(item.token || ''))}</code>\n   根目录：<code>${htmlEscape(item.rootDir || '/')}</code> · 剩余：${item.expiresIn ? `${item.expiresIn} 秒` : '永不过期'} · gRPC 日志 ${item.enableGrpcLog ? '开' : '关'}`
+          )
+        : ['没有额外 API Token']
+      await msg.edit({ text: htmlText(['<b>🔑 API Token 列表</b>', '', ...lines].join('\n')) })
+      return
+    }
+    if (action === 'info') {
+      const config = await this.getConfig()
+      const token = args[1] || config.token
+      if (!token) throw new Error(`用法：${commandName} token info [TOKEN]`)
+      const info = await this.getClient().unary('GetApiTokenInfo', { value: token })
+      const permissions = Object.entries((info.permissions || {}) as Record<string, boolean>)
+        .filter(([, enabled]) => enabled)
+        .map(([name]) => name.replace(/^allow/, ''))
+        .join(', ')
+      await msg.edit({
+        text: htmlText(
+          [
+            '<b>🔑 Token 详情</b>',
+            `<b>名称：</b> ${htmlEscape(info.friendlyName || '未命名')}`,
+            `<b>Token：</b> <code>${htmlEscape(maskToken(info.token || token))}</code>`,
+            `<b>根目录：</b> <code>${htmlEscape(info.rootDir || '/')}</code>`,
+            `<b>权限：</b> ${htmlEscape(permissions || '无')}`,
+            `<b>剩余有效期：</b> ${info.expiresIn ? `${info.expiresIn} 秒` : '永不过期'}`,
+            `<b>日志：</b> gRPC ${info.enableGrpcLog ? '开' : '关'} · 流文件 ${info.enableStreamFileLog ? '开' : '关'}`
+          ].join('\n')
+        )
+      })
+      return
+    }
+    if (action === 'create') {
+      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} token create NAME ROOT read|write|full [EXPIRES_SECONDS]`)
+      const expiresIn = args[4] === undefined ? undefined : Number(args[4])
+      if (expiresIn !== undefined && (!Number.isInteger(expiresIn) || expiresIn < 0)) throw new Error('EXPIRES_SECONDS 必须是非负整数，0 表示永不过期')
+      const result = await this.getClient().unary('CreateToken', { friendlyName: args[1], rootDir: normalizePath(args[2]), permissions: tokenPermissions(args[3]), expiresIn })
+      await msg.edit({ text: htmlText(['✅ <b>API Token 已创建</b>', `<b>名称：</b> ${htmlEscape(result.friendlyName || args[1])}`, `<b>Token：</b> <code>${htmlEscape(result.token || '')}</code>`, '<i>请立即保存；后续列表只显示脱敏值。</i>'].join('\n')) })
+      return
+    }
+    if (action === 'modify') {
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} token modify TOKEN name=... root=/... perm=read|write|full expires=秒 grpc=on|off stream-log=on|off`)
+      const options = Object.fromEntries(
+        args.slice(2).map((item) => {
+          const separator = item.indexOf('=')
+          if (separator < 1) throw new Error(`无效参数：${item}`)
+          return [item.slice(0, separator).toLowerCase(), item.slice(separator + 1)]
+        })
+      )
+      const request: Record<string, unknown> = { token: args[1] }
+      if (options.name !== undefined) request.friendlyName = options.name
+      if (options.root !== undefined) request.rootDir = normalizePath(options.root)
+      if (options.perm !== undefined) request.permissions = tokenPermissions(options.perm)
+      if (options.expires !== undefined) request.expiresIn = Number(options.expires)
+      if (options.grpc !== undefined) request.enableGrpcLog = options.grpc === 'on'
+      if (options['stream-log'] !== undefined) request.enableStreamFileLog = options['stream-log'] === 'on'
+      const result = await this.getClient().unary('ModifyToken', request)
+      await msg.edit({ text: htmlText(`✅ Token <code>${htmlEscape(maskToken(result.token || args[1]))}</code> 已修改`) })
+      return
+    }
+    if (action === 'remove') {
+      if (!args[1] || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} token remove TOKEN confirm`)
+      await this.getClient().unary('RemoveToken', { value: args[1] })
+      await msg.edit({ text: '✅ API Token 已删除' })
+      return
+    }
+    throw new Error(`用法：${commandName} token show|clear|login|list|info|create|modify|remove`)
   }
 
   private async handleVerify(msg: MessageContext): Promise<void> {
@@ -1427,6 +2470,42 @@ class Cd2Plugin extends Plugin {
         ].join('\n')
       )
     })
+  }
+
+  private async handleFileInfo(msg: MessageContext, args: string[]): Promise<void> {
+    const action = args[0]?.toLowerCase()
+    const targetPath = normalizePath(args.slice(1).join(' '))
+    if (!action || !args[1]) throw new Error(`用法：${commandName} file detail|meta|original /路径`)
+    if (action === 'detail') {
+      const result = await this.getClient().unary('GetFileDetailProperties', { path: targetPath, forceRefresh: false })
+      await msg.edit({
+        text: htmlText(
+          [
+            '<b>📄 文件详情</b>',
+            `<b>路径：</b> <code>${htmlEscape(targetPath)}</code>`,
+            `<b>文件数：</b> ${result.totalFileCount || 0}`,
+            `<b>目录数：</b> ${result.totalFolderCount || 0}`,
+            `<b>总大小：</b> ${formatBytes(result.totalSize || 0)}`,
+            `<b>收藏：</b> ${result.isFaved ? '是' : '否'}`,
+            `<b>共享：</b> ${result.isShared ? '是' : '否'}`,
+            `<b>原始路径：</b> <code>${htmlEscape(result.originalPath || '')}</code>`
+          ].join('\n')
+        )
+      })
+      return
+    }
+    if (action === 'meta') {
+      const result = await this.getClient().unary('GetMetaData', { path: targetPath, forceRefresh: false })
+      const entries = Object.entries((result.metadata || {}) as Record<string, string>)
+      await msg.edit({ text: htmlText(['<b>🏷 文件元数据</b>', `<b>路径：</b> <code>${htmlEscape(targetPath)}</code>`, '', ...(entries.length ? entries.map(([key, value]) => `<b>${htmlEscape(key)}：</b> <code>${htmlEscape(value)}</code>`) : ['没有元数据'])].join('\n')) })
+      return
+    }
+    if (action === 'original') {
+      const result = await this.getClient().unary('GetOriginalPath', { path: targetPath, forceRefresh: false })
+      await msg.edit({ text: htmlText(`<b>原始路径：</b> <code>${htmlEscape(result.result || '')}</code>`) })
+      return
+    }
+    throw new Error(`用法：${commandName} file detail|meta|original /路径`)
   }
 
   private async handleSpace(msg: MessageContext, inputPath?: string): Promise<void> {
@@ -1553,10 +2632,78 @@ class Cd2Plugin extends Plugin {
     }
     if (action === 'uploads') {
       const page = Number(args[1] || 1)
-      const result = await this.getClient().unary('GetUploadFileList', { getAll: true, itemsPerPage: MAX_ITEMS, pageNumber: Number.isFinite(page) && page > 0 ? page : 1 })
+      const operatorType = args[2] ? { mount: 0, copy: 1, backup: 2, remote: 3 }[args[2].toLowerCase()] : undefined
+      const statusFilter = args[3] ? { waiting: 0, preprocessing: 1, cancelled: 2, transfer: 3, paused: 4, finished: 5, skipped: 6, queued: 7, ignored: 8, error: 9, fatal: 10 }[args[3].toLowerCase()] : undefined
+      if (args[2] && operatorType === undefined) throw new Error('上传任务类型只支持 mount|copy|backup|remote')
+      if (args[3] && statusFilter === undefined) throw new Error('上传状态只支持 waiting|preprocessing|cancelled|transfer|paused|finished|skipped|queued|ignored|error|fatal')
+      const result = await this.getClient().unary('GetUploadFileList', { getAll: true, itemsPerPage: MAX_ITEMS, pageNumber: Number.isFinite(page) && page > 0 ? page : 1, operatorTypeFilter: operatorType, statusFilter })
       const files = (result.uploadFiles || []) as RpcResponse[]
-      const lines = files.length ? files.map((file) => `• <code>${htmlEscape(file.destPath || '未知')}</code> · ${file.transferedBytes || 0}/${file.size || 0} B · ${htmlEscape(file.status || '')}${file.errorMessage ? ` · ${htmlEscape(file.errorMessage)}` : ''}`) : ['没有上传任务']
-      await msg.edit({ text: htmlText([`<b>⬆️ 上传任务（共 ${result.totalCount || 0}）</b>`, '', ...lines].join('\n')) })
+      const types = ['挂载', '复制', '备份', '远程上传']
+      const lines = files.length ? files.map((item) => `• <code>${htmlEscape(item.destPath || item.key || '')}</code> · ${formatBytes(item.transferedBytes)}/${formatBytes(item.size)} · ${htmlEscape(item.status || '')} · ${types[Number(item.operatorType)] || item.operatorType}`) : ['没有上传任务']
+      await msg.edit({
+        text: htmlText([`<b>⬆️ 上传任务（筛选 ${result.totalCountFiltered ?? result.totalCount ?? 0}/总计 ${result.totalCount || 0}）</b>`, `<b>速度：</b> ${formatBytes(result.globalBytesPerSecond)}/s · ${formatBytes(result.finishedBytes)}/${formatBytes(result.totalBytes)}`, '', ...lines].join('\n'))
+      })
+      return
+    }
+    if (action === 'copies') {
+      const result = await this.getClient().unary('GetCopyTasks')
+      const tasks = (result.copyTasks || []) as RpcResponse[]
+      const statuses = ['等待', '扫描中', '已扫描', '完成', '失败']
+      const lines = tasks.length
+        ? tasks
+            .slice(0, MAX_ITEMS)
+            .map(
+              (task, index) =>
+                `${index + 1}. ${Number(task.taskMode) === 1 ? '移动' : '复制'} · ${statuses[Number(task.status)] || task.status}\n   <code>${htmlEscape(task.sourcePath || '')}</code> → <code>${htmlEscape(task.destPath || '')}</code>\n   文件 ${task.uploadedFiles || 0}/${task.totalFiles || 0} · ${formatBytes(task.uploadedBytes || 0)}/${formatBytes(task.totalBytes || 0)}${task.paused ? ' · ⏸' : ''}`
+            )
+        : ['没有复制任务']
+      await msg.edit({ text: htmlText(['<b>📋 复制/移动任务</b>', '', ...lines].join('\n')) })
+      return
+    }
+    if (action === 'merges') {
+      const result = await this.getClient().unary('GetMergeTasks')
+      const tasks = (result.mergeTasks || []) as RpcResponse[]
+      const statuses = ['等待', '运行中', '完成', '失败', '已取消']
+      const lines = tasks.length
+        ? tasks
+            .slice(0, MAX_ITEMS)
+            .map(
+              (task, index) =>
+                `${index + 1}. ${Number(task.operationType) === 1 ? '复制' : '移动'}合并 · ${statuses[Number(task.status)] || task.status}\n   <code>${htmlEscape(task.sourcePath || '')}</code> → <code>${htmlEscape(task.destPath || '')}</code>\n   文件 ${task.mergedFiles || 0} · 目录 ${task.mergedFolders || 0}${task.errorMessage ? ` · ${htmlEscape(task.errorMessage)}` : ''}`
+            )
+        : ['没有合并任务']
+      await msg.edit({ text: htmlText(['<b>🧩 合并任务</b>', '', ...lines].join('\n')) })
+      return
+    }
+    if (action === 'copy') {
+      const operation = args[1]?.toLowerCase()
+      if (operation === 'cancel' || operation === 'restart') {
+        if (!args[2] || !args[3]) throw new Error(`用法：${commandName} transfer copy ${operation} SOURCE DEST`)
+        await this.getClient().unary(operation === 'cancel' ? 'CancelCopyTask' : 'RestartCopyTask', { sourcePath: args[2], destPath: args.slice(3).join(' ') })
+      } else if (operation === 'pause-all' || operation === 'resume-all') {
+        await this.getClient().unary(operation === 'pause-all' ? 'PauseAllCopyTasks' : 'ResumeAllCopyTasks', operation === 'pause-all' ? { pause: true } : {})
+      } else if (operation === 'remove-completed' || operation === 'remove-all') {
+        const result = await this.getClient().unary(operation === 'remove-completed' ? 'RemoveCompletedCopyTasks' : 'RemoveAllCopyTasks')
+        await msg.edit({ text: `✅ 复制任务已清理${result.affectedCount !== undefined ? `（${result.affectedCount}）` : ''}` })
+        return
+      } else if (operation === 'pause' || operation === 'resume' || operation === 'remove') {
+        const taskKeys = args.slice(2)
+        if (!taskKeys.length) throw new Error(`用法：${commandName} transfer copy ${operation} TASK_KEY...`)
+        const method = operation === 'pause' ? 'PauseCopyTasks' : operation === 'resume' ? 'ResumeCopyTasks' : 'RemoveCopyTasks'
+        const result = await this.getClient().unary(method, { taskKeys, pause: operation === 'pause' })
+        if (result.success === false) throw new Error(result.errorMessage || '复制任务控制失败')
+        await msg.edit({ text: `✅ 已处理 ${result.affectedCount ?? taskKeys.length} 个复制任务` })
+        return
+      } else {
+        throw new Error(`用法：${commandName} transfer copy pause|resume|remove TASK_KEY...|pause-all|resume-all|remove-completed|remove-all|cancel|restart SOURCE DEST`)
+      }
+      await msg.edit({ text: '✅ 复制任务控制命令已执行' })
+      return
+    }
+    if (action === 'merge') {
+      if (args[1]?.toLowerCase() !== 'cancel' || !args[2] || !args[3]) throw new Error(`用法：${commandName} transfer merge cancel SOURCE DEST`)
+      await this.getClient().unary('CancelMergeTask', { sourcePath: args[2], destPath: args.slice(3).join(' ') })
+      await msg.edit({ text: '✅ 合并任务已取消' })
       return
     }
     if (['cancel', 'pause', 'resume'].includes(action)) {
@@ -1586,6 +2733,13 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: htmlText(`<b>云 API 配额：</b> ${result.success ? '✅ 可以添加' : `❌ ${htmlEscape(result.errorMessage || '不能添加')}`}`) })
       return
     }
+    if (action === 'oauth-state') {
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} api oauth-state OAUTH_TYPE RETURN_URL [DEVICE_ID] [CODE_VERIFIER]`)
+      const result = await this.getClient().unary('CreateOAuthState', { oauthType: args[1], returnUrl: args[2], deviceId: args[3], codeVerifier: args[4] })
+      if (result.success === false) throw new Error(result.errorMessage || '创建 OAuth state 失败')
+      await msg.edit({ text: htmlText(['✅ <b>OAuth state 已创建</b>', `<b>State：</b> <code>${htmlEscape(result.state || '')}</code>`, `<b>有效期：</b> ${result.expiresIn || 0} 秒`].join('\n')) })
+      return
+    }
     if (action === 'add') {
       const type = args[1]?.toLowerCase()
       let method = ''
@@ -1606,16 +2760,27 @@ class Cd2Plugin extends Plugin {
         if (!args[2]) throw new Error(`用法：${commandName} api add 115-cookie COOKIE`)
         method = 'APILogin115Editthiscookie'
         request = { editThiscookieString: args[2] }
-      } else if (type === '115-qrcode' || type === 'aliyun-qrcode' || type === '189-qrcode') {
-        method = type === '115-qrcode' ? 'APILogin115QRCode' : type === 'aliyun-qrcode' ? 'APILoginAliyunDriveQRCode' : 'APILogin189QRCode'
-        request = type === '115-qrcode' ? { platformString: args[2] } : { useOpenAPI: args[2]?.toLowerCase() === 'openapi' }
+      } else if (type === '115-qrcode' || type === 'aliyun-qrcode' || type === '189-qrcode' || type === '115-open-qrcode' || type === 'guangya-qrcode') {
+        method = type === '115-qrcode' ? 'APILogin115QRCode' : type === 'aliyun-qrcode' ? 'APILoginAliyunDriveQRCode' : type === '189-qrcode' ? 'APILogin189QRCode' : type === '115-open-qrcode' ? 'APILogin115OpenQRCode' : 'APILoginGuangYaPanQRCode'
+        request = type === '115-qrcode' ? { platformString: args[2] } : type === 'aliyun-qrcode' || type === '189-qrcode' ? { useOpenAPI: args[2]?.toLowerCase() === 'openapi' } : {}
         const messages = await this.getClient().stream(method, request)
         const lines = messages.map((item) => `<b>${htmlEscape(String(item.messageType || '状态'))}</b> ${htmlEscape(item.message || '')}`)
         await msg.edit({ text: htmlText([`<b>🔐 ${htmlEscape(type)} 登录</b>`, '', ...lines].join('\n')) })
         return
-      } else if (type === 'aliyun-oauth' || type === 'baidu-oauth' || type === 'onedrive-oauth' || type === 'google-oauth' || type === 'xunlei-oauth') {
+      } else if (['aliyun-oauth', 'baidu-oauth', 'onedrive-oauth', 'google-oauth', 'xunlei-oauth', 'xunlei-open', '123-oauth', '115-open', 'guangya-oauth'].includes(type || '')) {
         if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} api add ${type} REFRESH_TOKEN ACCESS_TOKEN EXPIRES_IN`)
-        method = { 'aliyun-oauth': 'APILoginAliyundriveOAuth', 'baidu-oauth': 'APILoginBaiduPanOAuth', 'onedrive-oauth': 'APILoginOneDriveOAuth', 'google-oauth': 'ApiLoginGoogleDriveOAuth', 'xunlei-oauth': 'APILoginXunleiOAuth' }[type]
+        method =
+          {
+            'aliyun-oauth': 'APILoginAliyundriveOAuth',
+            'baidu-oauth': 'APILoginBaiduPanOAuth',
+            'onedrive-oauth': 'APILoginOneDriveOAuth',
+            'google-oauth': 'ApiLoginGoogleDriveOAuth',
+            'xunlei-oauth': 'ApiLoginXunleiOAuth',
+            'xunlei-open': 'ApiLoginXunleiOpenOAuth',
+            '123-oauth': 'ApiLogin123panOAuth',
+            '115-open': 'APILogin115OpenOAuth',
+            'guangya-oauth': 'APILoginGuangYaPanOAuth'
+          }[type || ''] || ''
         request = { refresh_token: args[2], access_token: args[3], expires_in: Number(args[4]) }
       } else if (type === 'aliyun-refresh') {
         if (!args[2]) throw new Error(`用法：${commandName} api add aliyun-refresh REFRESH_TOKEN [openapi]`)
@@ -1625,12 +2790,46 @@ class Cd2Plugin extends Plugin {
         if (!args[2] || !args[3] || !args[4]) throw new Error(`用法：${commandName} api add google-refresh CLIENT_ID CLIENT_SECRET REFRESH_TOKEN`)
         method = 'ApiLoginGoogleDriveRefreshToken'
         request = { client_id: args[2], client_secret: args[3], refresh_token: args[4] }
+      } else if (type === 's3') {
+        if (!args[2] || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} api add s3 ACCESS_KEY SECRET_KEY REGION BUCKET [ENDPOINT] [path-style]`)
+        method = 'APILoginS3'
+        request = { accessKeyId: args[2], secretAccessKey: args[3], region: args[4], bucket: args[5], endpoint: args[6], pathStyle: args[7]?.toLowerCase() === 'path-style', doNotSyncToCloud: false, signatureVersion: 4 }
+      } else if (type === 'sftp') {
+        if (!args[2] || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} api add sftp HOST PORT USER PASSWORD [ROOT]`)
+        method = 'APILoginSftp'
+        request = { host: args[2], port: Number(args[3]), userName: args[4], password: args[5], rootPath: args[6] || '/', doNotSyncToCloud: false }
+      } else if (type === 'ftp') {
+        if (!args[2] || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} api add ftp HOST PORT USER PASSWORD [ROOT] [tls]`)
+        method = 'APILoginFtp'
+        request = { host: args[2], port: Number(args[3]), userName: args[4], password: args[5], rootPath: args[6] || '/', useTls: args[7]?.toLowerCase() === 'tls', doNotSyncToCloud: false }
+      } else if (type === 'smb') {
+        if (!args[2] || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} api add smb SERVER SHARE USER PASSWORD [ROOT] [WORKGROUP] [PORT]`)
+        method = 'APILoginSmb'
+        request = { server: args[2], share: args[3], userName: args[4], password: args[5], rootPath: args[6] || '/', workgroup: args[7], port: Number(args[8] || 445), doNotSyncToCloud: false }
+      } else if (type === 'clouddrive') {
+        if (!args[2] || !args[3]) throw new Error(`用法：${commandName} api add clouddrive GRPC_URL TOKEN [insecure]`)
+        method = 'APILoginCloudDrive'
+        request = { grpcUrl: args[2], token: args[3], insecureTls: args[4]?.toLowerCase() === 'insecure', doNotSyncToCloud: false }
       } else {
-        throw new Error(`支持：webdav|local|pikpak|115-cookie|aliyun-oauth|aliyun-refresh|baidu-oauth|onedrive-oauth|google-oauth|google-refresh|xunlei-oauth`)
+        throw new Error('支持：webdav|local|pikpak|115-cookie|115-qrcode|115-open|115-open-qrcode|aliyun-oauth|aliyun-refresh|aliyun-qrcode|baidu-oauth|onedrive-oauth|google-oauth|google-refresh|xunlei-oauth|xunlei-open|123-oauth|guangya-oauth|guangya-qrcode|s3|sftp|ftp|smb|clouddrive')
       }
       const result = await this.getClient().unary(method, request)
       if (result.success === false) throw new Error(result.errorMessage || '添加云 API 失败')
       await msg.edit({ text: `✅ 云 API 已添加（${htmlEscape(type || method)}）` })
+      return
+    }
+    if (action === 'discover-smb') {
+      const result = await this.getClient().unary('DiscoverSmbServers')
+      const servers = (result.servers || []) as RpcResponse[]
+      const lines = servers.length ? servers.map((server) => `• <b>${htmlEscape(server.name || '未知')}</b> · <code>${htmlEscape(server.address || '')}</code>`) : ['没有发现 SMB 服务器']
+      await msg.edit({ text: htmlText(['<b>🖥 SMB 服务器</b>', '', ...lines].join('\n')) })
+      return
+    }
+    if (action === 'discover-smb-shares') {
+      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} api discover-smb-shares SERVER USER PASSWORD [WORKGROUP] [PORT]`)
+      const result = await this.getClient().unary('DiscoverSmbShares', { server: args[1], userName: args[2], password: args[3], workgroup: args[4], port: Number(args[5] || 445) })
+      const shares = (result.shareNames || []) as string[]
+      await msg.edit({ text: htmlText(['<b>📂 SMB 共享</b>', '', ...(shares.length ? shares.map((name) => `• <code>${htmlEscape(name)}</code>`) : ['没有发现共享'])].join('\n')) })
       return
     }
     if (action === 'remove') {
@@ -1651,9 +2850,30 @@ class Cd2Plugin extends Plugin {
       if (mode !== 'set' || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} api config set CLOUD_NAME USER KEY VALUE`)
       const key = args[4]
       const raw = args.slice(5).join(' ')
-      const value = raw === 'true' ? true : raw === 'false' ? false : Number.isNaN(Number(raw)) ? raw : Number(raw)
-      const result = await this.getClient().unary('SetCloudAPIConfig', { cloudName: args[2], userName: args[3], [key]: value })
-      if (result.success === false) throw new Error(result.errorMessage || '云 API 配置失败')
+      const mutable = new Set([
+        'maxDownloadThreads',
+        'minReadLengthKB',
+        'maxReadLengthKB',
+        'defaultReadLengthKB',
+        'maxBufferPoolSizeMB',
+        'maxQueriesPerSecond',
+        'forceIpv4',
+        'apiProxy',
+        'dataProxy',
+        'customUserAgent',
+        'maxUploadThreads',
+        'insecureTls',
+        'useHttpDownload',
+        'supportDirectLink',
+        'useMultithreadDownloaderForCopy'
+      ])
+      if (!mutable.has(key)) throw new Error(`配置项不可修改；支持：${[...mutable].join('|')}`)
+      const booleans = new Set(['forceIpv4', 'insecureTls', 'useHttpDownload', 'supportDirectLink', 'useMultithreadDownloaderForCopy'])
+      const proxies = new Set(['apiProxy', 'dataProxy'])
+      const value = proxies.has(key) ? parseProxySetting(raw) : booleans.has(key) ? ['true', 'on', '1'].includes(raw.toLowerCase()) : key === 'customUserAgent' ? raw : Number(raw)
+      if (typeof value === 'number' && !Number.isFinite(value)) throw new Error(`${key} 必须是数字`)
+      const current = await this.getClient().unary('GetCloudAPIConfig', { cloudName: args[2], userName: args[3] })
+      await this.getClient().unary('SetCloudAPIConfig', { ...current, cloudName: args[2], userName: args[3], [key]: value })
       await msg.edit({ text: '✅ 云 API 配置已更新' })
       return
     }
@@ -1710,6 +2930,81 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: `✅ 备份目标已${mode === 'add' ? '添加' : '删除'}` })
       return
     }
+    if (action === 'status') {
+      if (!args[1]) throw new Error(`用法：${commandName} backup status /源目录`)
+      const item = await this.getClient().unary('BackupGetStatus', { value: normalizePath(args[1]) })
+      const backup = (item.backup || {}) as RpcResponse
+      const destinations = ((backup.destinations || []) as RpcResponse[]).map((entry) => entry.destinationPath).join(', ')
+      const rules = (backup.fileBackupRules || []) as RpcResponse[]
+      const schedules = (backup.timeSchedules || []) as RpcResponse[]
+      await msg.edit({
+        text: htmlText(
+          [
+            '<b>💾 备份详情</b>',
+            `<b>源：</b> <code>${htmlEscape(backup.sourcePath || args[1])}</code>`,
+            `<b>目标：</b> ${htmlEscape(destinations || '未设置')}`,
+            `<b>状态：</b> ${htmlEscape(item.statusMessage || item.status || '未知')}`,
+            `<b>文件监听：</b> ${backup.fileSystemWatchEnabled ? '开' : '关'}`,
+            `<b>扫描间隔：</b> ${backup.walkingThroughIntervalSecs || 0} 秒`,
+            `<b>文件规则：</b> ${rules.length}`,
+            `<b>时间计划：</b> ${schedules.length}`,
+            `<b>同步删除：</b> ${backup.syncDeleteFromDest ? '开' : '关'}`
+          ].join('\n')
+        )
+      })
+      return
+    }
+    if (action === 'strategy') {
+      if (!args[1] || !args[2] || !args[3] || !args[4] || args[5] === undefined) throw new Error(`用法：${commandName} backup strategy /源目录 skip|overwrite|history delete|recycle|keep|history none|source|empty INTERVAL_SECONDS [sync-delete]`)
+      const item = await this.getClient().unary('BackupGetStatus', { value: normalizePath(args[1]) })
+      const backup = (item.backup || {}) as RpcResponse
+      const replace = { skip: 0, overwrite: 1, history: 2 }[args[2].toLowerCase()]
+      const deletion = { delete: 0, recycle: 1, keep: 2, history: 3 }[args[3].toLowerCase()]
+      const completion = { none: 0, source: 1, empty: 2 }[args[4].toLowerCase()]
+      if (replace === undefined || deletion === undefined || completion === undefined) throw new Error('备份策略值无效')
+      Object.assign(backup, { fileReplaceRule: replace, fileDeleteRule: deletion, fileCompletionRule: completion, walkingThroughIntervalSecs: Number(args[5]), syncDeleteFromDest: args[6]?.toLowerCase() === 'sync-delete' })
+      await this.getClient().unary('BackupUpdate', backup)
+      await msg.edit({ text: '✅ 备份替换、删除、完成和扫描策略已更新' })
+      return
+    }
+    if (action === 'schedule') {
+      const mode = args[1]?.toLowerCase()
+      if (!mode || !args[2]) throw new Error(`用法：${commandName} backup schedule add|clear /源目录 [HH:MM[:SS]] [DAYS]`)
+      const item = await this.getClient().unary('BackupGetStatus', { value: normalizePath(args[2]) })
+      const backup = (item.backup || {}) as RpcResponse
+      if (mode === 'clear') backup.timeSchedules = []
+      else if (mode === 'add') {
+        if (!args[3] || !/^\d{1,2}:\d{2}(?::\d{2})?$/.test(args[3])) throw new Error('时间格式应为 HH:MM 或 HH:MM:SS')
+        const [hour, minute, second = 0] = args[3].split(':').map(Number)
+        if (hour > 23 || minute > 59 || second > 59) throw new Error('时间超出有效范围')
+        const daysOfWeek = args[4] ? args[4].split(',').map(Number) : []
+        backup.timeSchedules = [...((backup.timeSchedules || []) as RpcResponse[]), { isEnabled: true, hour, minute, second, daysOfWeek }]
+      } else throw new Error(`用法：${commandName} backup schedule add|clear /源目录 [HH:MM[:SS]] [DAYS]`)
+      backup.isTimeSchedulesEnabled = ((backup.timeSchedules || []) as RpcResponse[]).length > 0
+      await this.getClient().unary('BackupUpdate', backup)
+      await msg.edit({ text: `✅ 备份时间计划已${mode === 'add' ? '添加' : '清空'}` })
+      return
+    }
+    if (action === 'rule') {
+      const mode = args[1]?.toLowerCase()
+      if (!mode || !args[2]) throw new Error(`用法：${commandName} backup rule add|clear /源目录 [ext|name|regex|min VALUE allow|deny file|folder|both]`)
+      const item = await this.getClient().unary('BackupGetStatus', { value: normalizePath(args[2]) })
+      const backup = (item.backup || {}) as RpcResponse
+      if (mode === 'clear') backup.fileBackupRules = []
+      else if (mode === 'add') {
+        if (!args[3] || args[4] === undefined) throw new Error(`用法：${commandName} backup rule add /源目录 ext|name|regex|min VALUE allow|deny file|folder|both`)
+        const kind = { ext: 'extensions', name: 'fileNames', regex: 'regex', min: 'minSize' }[args[3].toLowerCase()]
+        if (!kind) throw new Error('规则类型只支持 ext|name|regex|min')
+        const target = args[6]?.toLowerCase() || 'file'
+        backup.fileBackupRules = [
+          ...((backup.fileBackupRules || []) as RpcResponse[]),
+          { kind, value: kind === 'minSize' ? Number(args[4]) : args[4], isEnabled: true, isBlackList: args[5]?.toLowerCase() === 'deny', applyToFolder: target === 'folder' || target === 'both', applyToFile: target === 'file' || target === 'both' }
+        ]
+      } else throw new Error(`用法：${commandName} backup rule add|clear ...`)
+      await this.getClient().unary('BackupUpdate', backup)
+      await msg.edit({ text: `✅ 备份文件规则已${mode === 'add' ? '添加' : '清空'}` })
+      return
+    }
     if (action === 'restart') {
       if (!args[1]) throw new Error(`用法：${commandName} backup restart /源目录`)
       await this.getClient().unary('BackupRestartWalkingThrough', { value: normalizePath(args[1]) })
@@ -1726,6 +3021,91 @@ class Cd2Plugin extends Plugin {
       const result = await this.getClient().unary('AddOfflineFiles', { urls: args[1], toFolder: normalizePath(args[2] || '/') })
       if (result.success === false) throw new Error(result.errorMessage || '远程上传任务提交失败')
       await msg.edit({ text: htmlText(['✅ <b>远程上传任务已提交</b>', ...(result.resultFilePaths || []).map((item: string) => `<code>${htmlEscape(item)}</code>`)].join('\n')) })
+      return
+    }
+    if (action === 'upload') {
+      const replied = await safeGetReplyMessage(msg)
+      const media = replied?.media as { type?: string; fileName?: string; mimeType?: string } | undefined
+      if (!replied || !media) throw new Error(`请回复 Telegram 文件后使用 ${commandName} remote upload /目标目录`)
+      const telegram = (await getGlobalClient()) as { downloadAsBuffer: (media: unknown) => Promise<Buffer> }
+      await msg.edit({ text: '🔄 正在读取 Telegram 文件…' })
+      const data = Buffer.from(await telegram.downloadAsBuffer(media))
+      if (data.length > 128 * 1024 * 1024) throw new Error('单个远程上传文件不能超过 128 MiB')
+      const fileName = media.fileName || `telegram-${replied.id || Date.now()}.${getMediaExtension(media)}`
+      const directory = normalizePath(args[1] || '/')
+      const filePath = `${directory === '/' ? '' : directory}/${fileName}`
+      await msg.edit({ text: htmlText(`🔄 正在建立官方远程上传通道：<code>${htmlEscape(filePath)}</code>…`) })
+      const client = this.getClient()
+      const started = await client.unary('StartRemoteUpload', { filePath, fileSize: data.length, knownHashes: {}, clientCanCalculateHashes: true })
+      const uploadId = String(started.uploadId || '')
+      if (!uploadId) throw new Error('CloudDrive2 未返回远程上传 ID')
+      let finalStatus = -1
+      let finalError = ''
+      await client.consumeServerStream('RemoteUploadChannel', { deviceId: `telebox-${randomUUID()}` }, async (event) => {
+        if (event.uploadId && event.uploadId !== uploadId) return true
+        if (event.type === 'read') {
+          const offset = Number(event.offset || 0)
+          const requested = Number(event.length || 0)
+          const end = Math.min(data.length, offset + requested)
+          const chunk = data.subarray(offset, end)
+          const result = await client.unary('RemoteReadData', { uploadId, offset, length: chunk.length, lazyRead: Boolean(event.lazyRead), data: chunk, isLastChunk: end >= data.length })
+          if (result.success === false) throw new Error(result.errorMessage || '远程上传数据发送失败')
+          const percent = data.length ? Math.min(100, Math.floor((end / data.length) * 100)) : 100
+          await msg.edit({ text: htmlText(`🔄 正在远程上传 <code>${htmlEscape(fileName)}</code>：${percent}%`) })
+          return true
+        }
+        if (event.type === 'hash') {
+          const hashType = Number(event.hashType || 0)
+          const algorithm = hashType === 1 ? 'md5' : 'sha1'
+          const hashValue = createHash(algorithm).update(data).digest('hex')
+          const blockSize = Number(event.blockSize || 0)
+          const blockHashes =
+            hashType === 1 && blockSize > 0
+              ? Array.from({ length: Math.ceil(data.length / blockSize) }, (_, index) =>
+                  createHash('md5')
+                    .update(data.subarray(index * blockSize, Math.min(data.length, (index + 1) * blockSize)))
+                    .digest('hex')
+                )
+              : []
+          await client.unary('RemoteHashProgress', { uploadId, bytesHashed: data.length, totalBytes: data.length, hashType, hashValue, blockHashes })
+          return true
+        }
+        if (event.type === 'status') {
+          finalStatus = Number(event.status || 0)
+          finalError = String(event.errorMessage || '')
+          if ([2, 5, 6, 8, 9, 10].includes(finalStatus)) return false
+        }
+        return true
+      })
+      if ([2, 9, 10].includes(finalStatus)) throw new Error(finalError || `远程上传失败，状态 ${finalStatus}`)
+      await msg.edit({ text: htmlText(`✅ 远程上传完成：<code>${htmlEscape(filePath)}</code>`) })
+      return
+    }
+    if (action === 'control') {
+      const operation = args[1]?.toLowerCase()
+      if (!['pause', 'resume', 'cancel'].includes(operation || '') || !args[2]) throw new Error(`用法：${commandName} remote control pause|resume|cancel UPLOAD_ID`)
+      await this.getClient().unary('RemoteUploadControl', { uploadId: args[2], action: operation })
+      await msg.edit({ text: `✅ 远程上传已${operation === 'pause' ? '暂停' : operation === 'resume' ? '恢复' : '取消'}` })
+      return
+    }
+    if (action === 'quota') {
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} remote quota CLOUD_NAME CLOUD_ACCOUNT_ID [PATH]`)
+      const result = await this.getClient().unary('GetOfflineQuotaInfo', { cloudName: args[1], cloudAccountId: args[2], path: args[3] })
+      await msg.edit({ text: htmlText(['<b>🌐 离线任务配额</b>', `<b>总数：</b> ${result.total || 0}`, `<b>已用：</b> ${result.used || 0}`, `<b>剩余：</b> ${result.left || 0}`].join('\n')) })
+      return
+    }
+    if (action === 'clear') {
+      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} remote clear CLOUD_NAME CLOUD_ACCOUNT_ID all|finished|error|downloading [delete] [PATH]`)
+      const filter = { all: 0, finished: 1, error: 2, downloading: 3 }[args[3].toLowerCase()]
+      if (filter === undefined) throw new Error('筛选只支持 all|finished|error|downloading')
+      await this.getClient().unary('ClearOfflineFiles', { cloudName: args[1], cloudAccountId: args[2], filter, deleteFiles: args[4]?.toLowerCase() === 'delete', path: args[5] })
+      await msg.edit({ text: '✅ 离线任务已清理' })
+      return
+    }
+    if (action === 'restart') {
+      if (!args[1] || !args[2] || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} remote restart CLOUD_NAME CLOUD_ACCOUNT_ID INFO_HASH URL PARENT_ID [PATH]`)
+      await this.getClient().unary('RestartOfflineTask', { cloudName: args[1], cloudAccountId: args[2], infoHash: args[3], url: args[4], parentId: args[5], path: args[6] })
+      await msg.edit({ text: '✅ 离线任务已重启' })
       return
     }
     if (action === 'list') {
@@ -1751,6 +3131,221 @@ class Cd2Plugin extends Plugin {
       return
     }
     throw new Error(`用法：${commandName} remote add|list|list-all|remove`)
+  }
+
+  private async handleSystem(msg: MessageContext, args: string[]): Promise<void> {
+    const action = args[0]?.toLowerCase() || 'runtime'
+    if (action === 'runtime') {
+      const result = await this.getClient().unary('GetRuntimeInfo')
+      await msg.edit({
+        text: htmlText(
+          ['<b>🖥 CloudDrive2 运行环境</b>', `<b>产品：</b> ${htmlEscape(result.productName || '')}`, `<b>版本：</b> ${htmlEscape(result.productVersion || '')}`, `<b>Cloud API：</b> ${htmlEscape(result.cloudApiVersion || '')}`, `<b>系统：</b> ${htmlEscape(result.osInfo || '')}`].join('\n')
+        )
+      })
+      return
+    }
+    if (action === 'settings') {
+      const result = await this.getClient().unary('GetSystemSettings')
+      const lines = Object.entries(result).map(([key, value]) => `<b>${htmlEscape(key)}：</b> <code>${htmlEscape(Array.isArray(value) ? value.join(',') : typeof value === 'object' ? JSON.stringify(value) : String(value))}</code>`)
+      await msg.edit({ text: htmlText(['<b>⚙️ 系统设置</b>', '', ...lines].join('\n')) })
+      return
+    }
+    if (action === 'set-log') {
+      if (args.length < 5) throw new Error(`用法：${commandName} system set-log FILE_MAX_BYTES BACKUP_MAX_BYTES FILE_COUNT BACKUP_COUNT`)
+      await this.getClient().unary('SetSystemSettings', { maxFileLogSizeBytes: Number(args[1]), maxBackupLogSizeBytes: Number(args[2]), maxFileLogFiles: Number(args[3]), maxBackupLogFiles: Number(args[4]) })
+      await msg.edit({ text: '✅ 日志轮换四项设置已整体更新' })
+      return
+    }
+    if (action === 'set-backup-limits') {
+      if (args.length < 4) throw new Error(`用法：${commandName} system set-backup-limits HIGH_WATER LOW_WATER MAX_WALKERS`)
+      await this.getClient().unary('SetSystemSettings', { backupQueueHighWater: Number(args[1]), backupQueueLowWater: Number(args[2]), maxConcurrentBackupWalkers: Number(args[3]) })
+      await msg.edit({ text: '✅ 备份扫描资源限制三项已整体更新' })
+      return
+    }
+    if (action === 'set') {
+      if (!args[1] || args[2] === undefined) throw new Error(`用法：${commandName} system set KEY VALUE`)
+      const spec = SYSTEM_SETTING_FIELDS[args[1]]
+      if (!spec) throw new Error(`未知设置项；支持：${Object.keys(SYSTEM_SETTING_FIELDS).join('|')}`)
+      if (['maxFileLogSizeBytes', 'maxBackupLogSizeBytes', 'maxFileLogFiles', 'maxBackupLogFiles'].includes(args[1])) throw new Error(`日志轮换设置必须整体提交：${commandName} system set-log ...`)
+      if (['backupQueueHighWater', 'backupQueueLowWater', 'maxConcurrentBackupWalkers'].includes(args[1])) throw new Error(`备份资源限制必须整体提交：${commandName} system set-backup-limits ...`)
+      const raw = args.slice(2).join(' ')
+      const value = spec[1] === 'bool' ? raw.toLowerCase() === 'on' || raw.toLowerCase() === 'true' : spec[1] === 'uint' || spec[1] === 'double' ? Number(raw) : spec[1] === 'list' ? raw.split(',').filter(Boolean) : spec[1] === 'proxy' ? parseProxySetting(raw) : raw
+      await this.getClient().unary('SetSystemSettings', { [args[1]]: value })
+      await msg.edit({ text: `✅ 系统设置 ${args[1]} 已更新` })
+      return
+    }
+    if (action === 'cache') {
+      const operation = args[1]?.toLowerCase() || 'stats'
+      if (operation === 'stats') {
+        const result = await this.getClient().unary('GetFileBufferDiskCacheStats')
+        await msg.edit({
+          text: htmlText(
+            [
+              '<b>🗃 文件磁盘缓存</b>',
+              `<b>启用：</b> ${result.enabled ? '是' : '否'}`,
+              `<b>占用：</b> ${formatBytes(result.totalBytes)} / ${formatBytes(result.maxBytes)}`,
+              `<b>条目：</b> ${result.entryCount || 0} · 分段 ${result.segmentCount || 0}`,
+              `<b>目录：</b> <code>${htmlEscape(result.rootDir || '')}</code>`,
+              `<b>初始扫描：</b> ${result.scanCompleted ? '完成' : '进行中'}`,
+              `<b>淘汰策略：</b> ${['LRU', '最大优先', '最小优先'][Number(result.evictionStrategy)] || result.evictionStrategy}`
+            ].join('\n')
+          )
+        })
+        return
+      }
+      if (operation === 'list') {
+        const result = await this.getClient().unary('ListDiskCacheFolders')
+        const folders = (result.folders || []) as RpcResponse[]
+        const lines = folders.length
+          ? folders.map((folder) => `• <code>${htmlEscape(folder.path || '')}</code> · ${folder.enabled ? '启用' : '禁用'} · ${formatBytes(folder.minFileSize)}-${formatBytes(folder.maxFileSize)} · ${htmlEscape(((folder.extensions || []) as string[]).join(',') || '全部扩展名')}`)
+          : ['没有目录缓存规则']
+        await msg.edit({ text: htmlText(['<b>🗃 目录缓存规则</b>', '', ...lines].join('\n')) })
+        return
+      }
+      if (operation === 'purge') {
+        if (args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} system cache purge confirm`)
+        await this.getClient().unary('PurgeFileBufferDiskCache')
+        await msg.edit({ text: '✅ 文件磁盘缓存已清空' })
+        return
+      }
+      if (operation === 'eviction') {
+        const strategy = { lru: 0, largest: 1, smallest: 2 }[args[2]?.toLowerCase() || '']
+        if (strategy === undefined) throw new Error(`用法：${commandName} system cache eviction lru|largest|smallest`)
+        await this.getClient().unary('SetDiskCacheEvictionStrategy', { strategy })
+        await msg.edit({ text: '✅ 缓存淘汰策略已更新' })
+        return
+      }
+      if (operation === 'folder') {
+        const mode = args[2]?.toLowerCase()
+        if (mode === 'remove') {
+          if (!args[3]) throw new Error(`用法：${commandName} system cache folder remove /路径`)
+          await this.getClient().unary('RemoveFolderDiskCache', { path: normalizePath(args[3]) })
+          await msg.edit({ text: '✅ 目录缓存规则已删除' })
+          return
+        }
+        if (mode === 'set') {
+          if (!args[3]) throw new Error(`用法：${commandName} system cache folder set /路径 [MAX_BYTES] [MIN_BYTES] disabled|include|exclude [EXT,...] on|off`)
+          const filterMode = { disabled: 0, include: 1, exclude: 2 }[args[6]?.toLowerCase() || 'disabled']
+          await this.getClient().unary('SetFolderDiskCache', { path: normalizePath(args[3]), maxFileSize: Number(args[4] || 0), minFileSize: Number(args[5] || 0), extensionFilterMode: filterMode, extensions: (args[7] || '').split(',').filter(Boolean), enabled: args[8]?.toLowerCase() !== 'off' })
+          await msg.edit({ text: '✅ 目录缓存规则已保存' })
+          return
+        }
+      }
+      throw new Error(`用法：${commandName} system cache stats|list|purge|eviction|folder`)
+    }
+    if (action === 'dir-cache') {
+      const operation = args[1]?.toLowerCase()
+      if (operation === 'set') {
+        if (!args[2]) throw new Error(`用法：${commandName} system dir-cache set /路径 SECONDS|default`)
+        await this.getClient().unary('SetDirCacheTimeSecs', { path: normalizePath(args[2]), dirCacheTimeToLiveSecs: args[3]?.toLowerCase() === 'default' || args[3] === undefined ? undefined : Number(args[3]) })
+        await msg.edit({ text: '✅ 目录缓存时间已更新' })
+        return
+      }
+      if (operation === 'effective') {
+        if (!args[2]) throw new Error(`用法：${commandName} system dir-cache effective /路径`)
+        const result = await this.getClient().unary('GetEffectiveDirCacheTimeSecs', { path: normalizePath(args[2]) })
+        await msg.edit({ text: `目录缓存有效期：${result.dirCacheTimeSecs || 0} 秒` })
+        return
+      }
+      if (operation === 'expire') {
+        if (!args[2]) throw new Error(`用法：${commandName} system dir-cache expire /路径`)
+        await this.getClient().unary('ForceExpireDirCache', { path: normalizePath(args[2]) })
+        await msg.edit({ text: '✅ 目录缓存已强制过期' })
+        return
+      }
+      if (operation === 'vacuum') {
+        await this.getClient().unary('VacuumDirCache')
+        await msg.edit({ text: '✅ 目录缓存数据库已整理' })
+        return
+      }
+      if (operation === 'size') {
+        const result = await this.getClient().unary('GetDirCacheDbSize')
+        await msg.edit({ text: `目录缓存数据库：${formatBytes(result.sizeBytes)}` })
+        return
+      }
+      throw new Error(`用法：${commandName} system dir-cache set|effective|expire|vacuum|size`)
+    }
+    if (action === 'table') {
+      const operation = args[1]?.toLowerCase()
+      if (operation === 'open') {
+        const result = await this.getClient().unary('GetOpenFileTable', { includeDir: args[2]?.toLowerCase() === 'include-dir' })
+        const entries = Object.entries((result.openFiles || {}) as Record<string, string>)
+        await msg.edit({
+          text: htmlText(['<b>📖 打开文件表</b>', `<b>本地打开数：</b> ${result.localOpenFileCount || 0}`, '', ...(entries.length ? entries.slice(0, MAX_ITEMS).map(([handle, filePath]) => `• <code>${htmlEscape(handle)}</code> ${htmlEscape(filePath)}`) : ['没有打开文件'])].join('\n'))
+        })
+        return
+      }
+      if (operation === 'dir') {
+        const result = await this.getClient().unary('GetDirCacheTable')
+        const entries = Object.entries((result.dirCache || {}) as Record<string, RpcResponse>)
+        await msg.edit({
+          text: htmlText(
+            ['<b>🗂 目录缓存表</b>', '', ...(entries.length ? entries.slice(0, MAX_ITEMS).map(([filePath, item]) => `• <code>${htmlEscape(filePath)}</code> · TTL ${item.timeToLiveSecs || 0}s · 引用 ${item.referencedSubfileLen || 0} · ${htmlEscape(item.insertTime || '')}`) : ['目录缓存为空'])].join(
+              '\n'
+            )
+          )
+        })
+        return
+      }
+      if (operation === 'refs') {
+        if (!args[2]) throw new Error(`用法：${commandName} system table refs /路径`)
+        const result = await this.getClient().unary('GetReferencedEntryPaths', { path: normalizePath(args.slice(2).join(' ')) })
+        const paths = (result.paths || []) as string[]
+        await msg.edit({ text: htmlText(['<b>🔗 引用路径</b>', '', ...(paths.length ? paths.map((filePath) => `• <code>${htmlEscape(filePath)}</code>`) : ['没有引用路径'])].join('\n')) })
+        return
+      }
+      if (operation === 'temp') {
+        const result = await this.getClient().unary('GetTempFileTable')
+        const files = (result.tempFiles || []) as string[]
+        await msg.edit({ text: htmlText([`<b>🧹 临时文件（${result.count || 0}）</b>`, '', ...(files.length ? files.slice(0, MAX_ITEMS).map((filePath) => `• <code>${htmlEscape(filePath)}</code>`) : ['没有临时文件'])].join('\n')) })
+        return
+      }
+      throw new Error(`用法：${commandName} system table open [include-dir]|dir|refs /路径|temp`)
+    }
+    if (action === 'capabilities') {
+      const result = await this.getClient().unary('GetServiceCapabilities')
+      await msg.edit({ text: htmlText(['<b>🧰 服务能力</b>', `<b>服务重启：</b> ${result.canRestart ? '支持' : '不支持'}`, `<b>系统更新：</b> ${result.canUpdate ? '支持' : '不支持'}`].join('\n')) })
+      return
+    }
+    if (action === 'service') {
+      const operation = args[1]?.toLowerCase()
+      if (!['restart', 'shutdown', 'update'].includes(operation || '') || args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} system service restart|shutdown|update confirm`)
+      await msg.edit({ text: `🔄 正在执行服务${operation === 'restart' ? '重启' : operation === 'shutdown' ? '关闭' : '更新'}…` })
+      await this.getClient().unary(operation === 'restart' ? 'RestartService' : operation === 'shutdown' ? 'ShutdownService' : 'UpdateSystem')
+      return
+    }
+    if (action === 'web') {
+      const operation = args[1]?.toLowerCase() || 'get'
+      if (operation === 'get') {
+        const result = await this.getClient().unary('GetWebServerConfig')
+        await msg.edit({
+          text: htmlText(
+            [
+              '<b>🌐 Web 服务</b>',
+              `<b>HTTP：</b> ${result.httpPort || 0}`,
+              `<b>HTTPS：</b> ${result.httpsPort || 0}`,
+              `<b>启用 HTTPS：</b> ${result.enableHttps ? '是' : '否'}`,
+              `<b>证书：</b> <code>${htmlEscape(result.certFile || '')}</code>`,
+              `<b>密钥：</b> <code>${htmlEscape(result.keyFile || '')}</code>`
+            ].join('\n')
+          )
+        })
+        return
+      }
+      if (operation === 'set') {
+        if (!args[2] || !args[3] || !['on', 'off'].includes(args[4]?.toLowerCase() || '')) throw new Error(`用法：${commandName} system web set HTTP_PORT HTTPS_PORT on|off [CERT_FILE] [KEY_FILE]`)
+        await this.getClient().unary('SetWebServerConfig', { httpPort: Number(args[2]), httpsPort: Number(args[3]), enableHttps: args[4].toLowerCase() === 'on', certFile: args[5], keyFile: args[6] })
+        await msg.edit({ text: '✅ Web 服务配置已更新' })
+        return
+      }
+      if (operation === 'self-cert') {
+        if (args[2]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} system web self-cert confirm`)
+        await this.getClient().unary('GenerateSelfSignedCert', { restartServers: true })
+        await msg.edit({ text: '✅ 自签名证书已生成并重启 Web 服务' })
+        return
+      }
+    }
+    throw new Error(`用法：${commandName} system runtime|settings|set|cache|dir-cache|capabilities|service|web`)
   }
 
   private async handleDav(msg: MessageContext, args: string[]): Promise<void> {
@@ -1925,6 +3520,10 @@ class Cd2Plugin extends Plugin {
           await this.handleToken(msg, args.slice(1))
         } else if (subcommand === 'account') {
           await this.handleAccount(msg, args.slice(1))
+        } else if (subcommand === '2fa') {
+          await this.handleTwoFactor(msg, args.slice(1))
+        } else if (subcommand === 'session') {
+          await this.handleSessions(msg, args.slice(1))
         } else if (subcommand === 'check') {
           await this.handleVerify(msg)
         } else if (subcommand === 'status') {
@@ -1934,6 +3533,8 @@ class Cd2Plugin extends Plugin {
         } else if (subcommand === 'find') {
           if (!args[1]) throw new Error(`用法：${commandName} find /路径/文件`)
           await this.handleFind(msg, args.slice(1).join(' '))
+        } else if (subcommand === 'file') {
+          await this.handleFileInfo(msg, args.slice(1))
         } else if (subcommand === 'grep') {
           await this.handleSearch(msg, args.slice(1))
         } else if (subcommand === 'df') {
@@ -1950,6 +3551,8 @@ class Cd2Plugin extends Plugin {
           await this.handleBackup(msg, args.slice(1))
         } else if (subcommand === 'remote') {
           await this.handleRemote(msg, args.slice(1))
+        } else if (subcommand === 'system') {
+          await this.handleSystem(msg, args.slice(1))
         } else if (subcommand === 'dl') {
           if (!args[1]) throw new Error(`用法：${commandName} dl /路径/文件`)
           await this.handleDownload(msg, args.slice(1).join(' '))
