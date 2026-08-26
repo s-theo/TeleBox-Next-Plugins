@@ -289,6 +289,239 @@ const helpSections: HelpSection[] = [
   }
 ]
 
+const formatHelpLine = (line: string): string => {
+  const separator = line.indexOf(' — ')
+  const rawCommand = separator >= 0 ? line.slice(0, separator) : line
+  const description = separator >= 0 ? line.slice(separator + 3) : ''
+  const command = rawCommand
+    .split(/\s+/)
+    .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
+    .join(' ')
+  return `• <code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
+}
+
+const compactHelpSections: HelpSection[] = [
+  {
+    title: '基础配置',
+    lines: [
+      `${commandName} conf — 配置服务地址、账户、Token、路径和 WebDAV`,
+      `${commandName} collapse — 查看原生折叠状态`,
+      `${commandName} collapse on — 开启原生折叠`,
+      `${commandName} collapse off — 关闭原生折叠`,
+      `${commandName} login — 登录 CloudDrive2`,
+      `${commandName} status — 查看连接状态`,
+      `${commandName} check — 验证服务连接`,
+      `${commandName} tasks — 查看任务统计`
+    ]
+  },
+  { title: '账户安全', lines: [`${commandName} account — 查看、注册、退出、重置或注销账户`, `${commandName} 2fa — 查看、设置、启用、关闭两步验证和恢复码`, `${commandName} session — 查看或撤销登录会话`, `${commandName} token — 查看、创建、修改或删除 API Token`] },
+  {
+    title: '文件与挂载',
+    lines: [
+      `${commandName} ls — 浏览目录`,
+      `${commandName} find — 按路径查找文件`,
+      `${commandName} grep — 搜索文件内容`,
+      `${commandName} df — 查看空间使用情况`,
+      `${commandName} file — 查看文件详情、元数据和原始路径`,
+      `${commandName} mkdir — 创建文件夹`,
+      `${commandName} rename — 重命名文件`,
+      `${commandName} mv — 移动文件`,
+      `${commandName} cp — 复制文件`,
+      `${commandName} rm — 删除文件或文件夹`,
+      `${commandName} dl — 下载文件到 Telegram`,
+      `${commandName} up — 通过 WebDAV 上传 Telegram 文件`,
+      `${commandName} mount — 管理挂载点`
+    ]
+  },
+  {
+    title: '传输任务',
+    lines: [
+      `${commandName} transfer status — 查看任务统计`,
+      `${commandName} transfer downloads — 查看下载任务`,
+      `${commandName} transfer uploads — 查看上传任务`,
+      `${commandName} transfer copies — 查看复制和移动任务`,
+      `${commandName} transfer merges — 查看合并任务`,
+      `${commandName} transfer pause — 暂停任务`,
+      `${commandName} transfer resume — 恢复任务`,
+      `${commandName} transfer cancel — 取消任务`,
+      `${commandName} transfer copy — 暂停、恢复、取消、重启和清理复制任务`,
+      `${commandName} transfer merge cancel — 取消合并任务`
+    ]
+  },
+  {
+    title: 'Cloud API',
+    lines: [
+      `${commandName} api list — 列出云盘配置`,
+      `${commandName} api can-add — 检查添加配额`,
+      `${commandName} api add — 添加 WebDAV、本地、PikPak、115、189、阿里、百度、OneDrive、Google、迅雷、123、光鸭、CloudDrive`,
+      `${commandName} api add s3 — 添加 S3`,
+      `${commandName} api add sftp — 添加 SFTP`,
+      `${commandName} api add ftp — 添加 FTP/FTPS`,
+      `${commandName} api add smb — 添加 SMB`,
+      `${commandName} api discover-smb — 发现 SMB 服务器`,
+      `${commandName} api discover-smb-shares — 发现 SMB 共享`,
+      `${commandName} api config — 查看或修改云 API 配置`,
+      `${commandName} api remove — 删除云盘配置`,
+      `${commandName} api oauth-state — 创建 OAuth 登录状态`
+    ]
+  },
+  {
+    title: '备份',
+    lines: [
+      `${commandName} backup list — 列出备份任务`,
+      `${commandName} backup can-add — 检查添加配额`,
+      `${commandName} backup add — 添加备份任务`,
+      `${commandName} backup update — 更新备份任务`,
+      `${commandName} backup remove — 删除备份任务`,
+      `${commandName} backup enable — 开关备份任务`,
+      `${commandName} backup watch — 开关文件监听`,
+      `${commandName} backup destination — 管理备份目标`,
+      `${commandName} backup status — 查看备份状态`,
+      `${commandName} backup strategy — 设置替换、删除、完成策略和扫描间隔`,
+      `${commandName} backup schedule — 管理时间计划`,
+      `${commandName} backup rule — 管理文件规则`,
+      `${commandName} backup restart — 立即重新扫描`
+    ]
+  },
+  {
+    title: '远程上传与离线任务',
+    lines: [
+      `${commandName} remote add — 创建离线下载任务`,
+      `${commandName} remote list — 查看当前离线任务`,
+      `${commandName} remote list-all — 分页查看全部离线任务`,
+      `${commandName} remote remove — 删除离线任务`,
+      `${commandName} remote upload — 用官方协议上传 Telegram 文件`,
+      `${commandName} remote control — 暂停、恢复或取消远程上传`,
+      `${commandName} remote quota — 查询离线配额`,
+      `${commandName} remote clear — 清理离线任务`,
+      `${commandName} remote restart — 重启离线任务`
+    ]
+  },
+  {
+    title: '系统、缓存与 WebDAV',
+    lines: [
+      `${commandName} system runtime — 查看运行信息`,
+      `${commandName} system settings — 查看系统设置`,
+      `${commandName} system set — 修改系统设置`,
+      `${commandName} system set-log — 设置日志轮换`,
+      `${commandName} system set-backup-limits — 设置备份资源限制`,
+      `${commandName} system cache — 查看、清理和配置磁盘缓存`,
+      `${commandName} system dir-cache — 管理目录缓存`,
+      `${commandName} system table — 查看打开文件、目录缓存、引用路径和临时文件`,
+      `${commandName} system capabilities — 查看服务能力`,
+      `${commandName} system service — 重启、关闭或更新服务`,
+      `${commandName} system web — 管理 Web 服务配置`,
+      `${commandName} dav — 管理 WebDAV 服务和用户`
+    ]
+  }
+]
+
+const compactHelpDescriptions: Record<string, string> = {
+  conf: '配置地址、账户、Token、路径和 WebDAV',
+  collapse: '查看原生折叠状态',
+  'collapse on': '开启原生折叠',
+  'collapse off': '关闭原生折叠',
+  login: '登录 CloudDrive2',
+  status: '查看连接和配置状态',
+  check: '验证 CloudDrive2 连接',
+  tasks: '查看任务统计',
+  account: '管理账户登录状态',
+  'account register': '注册 CloudDrive2 账户',
+  'account reset-email': '发送密码重置邮件',
+  'account reset': '使用验证码重置密码',
+  'account delete-email': '发送账户注销邮件',
+  'account delete': '确认注销账户',
+  '2fa': '管理两步验证',
+  session: '管理登录会话',
+  token: '管理 API Token',
+  ls: '浏览 CloudDrive2 目录',
+  find: '按路径查找文件',
+  grep: '搜索文件内容',
+  df: '查看空间使用情况',
+  'file detail': '查看文件详情',
+  'file meta': '查看文件元数据',
+  'file original': '查看文件原始路径',
+  mkdir: '创建文件夹',
+  rename: '重命名文件',
+  mv: '移动文件',
+  cp: '复制文件',
+  rm: '删除文件或文件夹',
+  dl: '下载文件到 Telegram',
+  up: '通过 WebDAV 上传 Telegram 文件',
+  mount: '管理挂载点',
+  'transfer status': '查看任务统计',
+  'transfer downloads': '查看下载任务',
+  'transfer uploads': '查看上传任务',
+  'transfer copies': '查看复制和移动任务',
+  'transfer merges': '查看合并任务',
+  'transfer pause': '暂停下载或上传任务',
+  'transfer resume': '恢复下载或上传任务',
+  'transfer cancel': '取消下载或上传任务',
+  'transfer copy': '管理复制任务',
+  'transfer merge cancel': '取消合并任务',
+  'api list': '列出云盘配置',
+  'api can-add': '检查云盘添加配额',
+  'api config': '查看或修改云 API 配置',
+  'api remove': '删除云盘配置',
+  'api discover-smb': '发现 SMB 服务器',
+  'api discover-smb-shares': '发现 SMB 共享目录',
+  'api oauth-state': '创建 OAuth 登录状态',
+  backup: '管理备份任务',
+  'backup list': '列出备份任务',
+  'backup can-add': '检查备份添加配额',
+  'backup add': '添加备份任务',
+  'backup update': '更新备份任务',
+  'backup remove': '删除备份任务',
+  'backup enable': '开关备份任务',
+  'backup watch': '开关文件监听',
+  'backup destination': '管理备份目标',
+  'backup status': '查看备份状态',
+  'backup strategy': '设置备份策略',
+  'backup schedule': '管理备份时间计划',
+  'backup rule': '管理备份文件规则',
+  'backup restart': '立即重新扫描备份',
+  remote: '管理远程上传和离线任务',
+  'remote add': '创建离线下载任务',
+  'remote list': '查看当前离线任务',
+  'remote list-all': '分页查看全部离线任务',
+  'remote remove': '删除离线任务',
+  'remote upload': '使用官方协议上传 Telegram 文件',
+  'remote control': '控制官方远程上传',
+  'remote quota': '查询离线下载配额',
+  'remote clear': '清理离线下载任务',
+  'remote restart': '重启离线下载任务',
+  'system runtime': '查看运行信息',
+  'system settings': '查看系统设置',
+  'system set': '修改系统设置',
+  'system set-log': '设置日志轮换',
+  'system set-backup-limits': '设置备份资源限制',
+  'system cache': '管理文件磁盘缓存',
+  'system dir-cache': '管理目录缓存',
+  'system table': '查看系统文件表',
+  'system capabilities': '查看服务能力',
+  'system service': '重启、关闭或更新服务',
+  'system web': '管理 Web 服务配置',
+  dav: '管理 WebDAV 服务和用户'
+}
+
+const getCompactHelpDescription = (line: string): string => {
+  const command = line.slice(commandName.length + 1)
+  if (command.startsWith('api add ')) return `添加 ${command.slice(8)} 云盘或存储`
+  if (command.startsWith('2fa ')) return '执行两步验证操作'
+  if (command.startsWith('session ')) return '执行会话操作'
+  if (command.startsWith('token ')) return '执行 Token 操作'
+  if (command.startsWith('mount ')) return '执行挂载点操作'
+  if (command.startsWith('dav ')) return '执行 WebDAV 操作'
+  return compactHelpDescriptions[command] || '执行 CloudDrive2 管理操作'
+}
+
+const buildHelpBody = (): string => compactHelpSections.map(({ title, lines }) => `<b>☁️ ${htmlEscape(title)}</b>\n${lines.map((line) => formatHelpLine(line.includes(' — ') ? line : `${line} — ${getCompactHelpDescription(line)}`)).join('\n')}`).join('\n\n')
+
+const buildHelpDescription = (collapse: boolean): string => {
+  const body = buildHelpBody()
+  return collapse ? `<blockquote expandable>${body}</blockquote>` : body
+}
+
 const HELP_LINES_PER_MESSAGE = 20
 
 const buildHelpMessages = (collapse: boolean): string[] =>
@@ -298,25 +531,11 @@ const buildHelpMessages = (collapse: boolean): string[] =>
       const part = lines.slice(offset, offset + HELP_LINES_PER_MESSAGE)
       const page = Math.floor(offset / HELP_LINES_PER_MESSAGE) + 1
       const pageTitle = lines.length > HELP_LINES_PER_MESSAGE ? `${title}（${page}）` : title
-      const body = part
-        .map((line) => {
-          const separator = line.indexOf(' — ')
-          const rawCommand = separator >= 0 ? line.slice(0, separator) : line
-          const description = separator >= 0 ? line.slice(separator + 3) : ''
-          const command = rawCommand
-            .split(/\s+/)
-            .filter((token, index) => index === 0 || (!/^[A-Z][A-Z0-9_]*$/.test(token) && !/^\[.*\]$/.test(token) && !/^[A-Z][A-Z0-9_]*=/.test(token)))
-            .join(' ')
-          return `<code>${htmlEscape(command)}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
-        })
-        .map((line) => `• ${line}`)
-        .join('\n')
+      const body = part.map(formatHelpLine).join('\n')
       messages.push(`<b>☁️ ${htmlEscape(pageTitle)}</b>\n${collapse ? `<blockquote expandable>${body}</blockquote>` : body}`)
     }
     return messages
   })
-
-const helpText = buildHelpMessages(true).join('\n\n')
 
 const htmlText = (text: string): string => html(text)
 
@@ -2227,7 +2446,7 @@ class Cd2Client {
 }
 
 class Cd2Plugin extends Plugin {
-  description = helpText
+  description = async (): Promise<string> => buildHelpDescription((await this.getConfig()).collapse)
   private dbPromise?: Promise<Db>
   private client?: Cd2Client
 
