@@ -65,55 +65,65 @@ const helpText = `
 <b>☁️ CloudDrive2 管理</b>
 
 <b>账户与安全</b>
-• <code>${commandName} account status|logout|reset-email|reset|delete-email|delete</code>
-• <code>${commandName} login</code> · <code>${commandName} 2fa status|setup|enable|disable|recovery|regenerate|login</code>
-• <code>${commandName} session list|revoke|revoke-others</code>
-• <code>${commandName} token show|list|info|create|modify|remove</code>
+• <code>${commandName} account status|logout|reset-email|reset</code> 查看、退出或重置账户
+• <code>${commandName} account delete-email|delete ... confirm</code> 发送注销邮件并确认注销账户
+• <code>${commandName} 2fa status|setup|enable|disable</code> 查看、设置、启用或关闭两步验证
+• <code>${commandName} 2fa recovery|regenerate</code> 查看或重新生成恢复码；<code>login</code> 使用 TOTP 登录
+• <code>${commandName} 2fa send-disable-email|disable-email|unbind</code> 邮件关闭 2FA 或解绑当前设备
+• <code>${commandName} session list|revoke|revoke-others</code> 查看或撤销会话
+• <code>${commandName} token show|list|info</code> 查看当前配置 Token、Token 列表或 Token 详情（输出脱敏）
+• <code>${commandName} token create|modify|remove</code> 创建、修改或删除 API Token
 
-<b>文件</b>
-• <code>${commandName} ls|find|grep|mkdir|rename|mv|cp|rm|df</code>
-• <code>${commandName} file detail|meta|original /路径</code>
-• <code>${commandName} dl /路径/文件</code> 下载到 Telegram
-• 回复文件：<code>${commandName} up [目标目录]</code> WebDAV 上传
+<b>文件操作</b>
+• <code>${commandName} ls|find|grep</code> 浏览目录、搜索文件名或内容
+• <code>${commandName} mkdir|rename|mv|cp|rm</code> 创建目录、改名、移动、复制或删除文件
+• <code>${commandName} df</code> 查看空间；<code>file detail|meta|original</code> 查看详情、元数据或原始路径
+• <code>${commandName} dl /路径/文件</code> 下载文件并替换当前命令消息；不生成链接
+• 回复 Telegram 文件后使用 <code>${commandName} up [目标目录]</code> 通过 WebDAV 上传
 
 <b>传输任务</b>
-• <code>${commandName} transfer status|downloads|uploads|copies|merges</code>
-• <code>${commandName} transfer pause|resume|cancel all|KEY...</code>
-• <code>${commandName} transfer copy pause|resume|remove TASK_KEY...</code>
-• <code>${commandName} transfer copy pause-all|resume-all|remove-completed|remove-all</code>
-• <code>${commandName} transfer copy cancel|restart SOURCE DEST</code>
-• <code>${commandName} transfer merge cancel SOURCE DEST</code>
+• <code>${commandName} transfer status</code> 查看任务数量；<code>downloads|uploads</code> 查看下载/上传任务和进度
+• <code>${commandName} transfer copies|merges</code> 查看复制/移动任务或合并任务详情
+• <code>${commandName} transfer pause|resume|cancel</code> 控制下载/上传任务（支持 all）
+• <code>${commandName} transfer copy ...</code> 暂停、恢复、取消、重启、批量控制和清理复制任务
+• <code>${commandName} transfer merge cancel SOURCE DEST</code> 取消指定合并任务
 
 <b>Cloud API</b>
-• <code>${commandName} api list|can-add|discover-smb|discover-smb-shares|remove|config</code>
-• <code>${commandName} api add webdav|local|pikpak|s3|sftp|ftp|smb|clouddrive ...</code>
-• <code>${commandName} api add 115-open|115-open-qrcode|123-oauth|guangya-oauth|guangya-qrcode ...</code>
-• 也支持 115、阿里、百度、OneDrive、Google、迅雷 OAuth/二维码登录
+• <code>${commandName} api list</code> 查看已配置云盘；<code>remove CLOUD USER confirm</code> 删除云盘配置
+• <code>${commandName} api add ...</code> 添加 WebDAV、本地目录、PikPak、115、阿里、百度、OneDrive、Google、迅雷、123、光鸭、CloudDrive
+• <code>${commandName} api add s3|sftp|ftp|smb ...</code> 添加 S3、SFTP、FTP/FTPS 或 SMB 存储
+• <code>${commandName} api config get|set ...</code> 查看或修改线程、限速、代理和下载选项
+• <code>${commandName} api discover-smb</code> 发现 SMB 服务器；<code>discover-smb-shares ...</code> 查询服务器共享
+• OAuth/二维码：登录上述服务
 
 <b>备份</b>
-• <code>${commandName} backup list|status|add|update|remove|enable|watch|destination|restart</code>
-• <code>${commandName} backup strategy /源 替换 删除 完成 间隔 [sync-delete]</code>
-• <code>${commandName} backup schedule add|clear /源 [时间] [星期]</code>
-• <code>${commandName} backup rule add|clear /源 ...</code>
+• <code>${commandName} backup list|status</code> 查看备份状态、目标和策略
+• <code>${commandName} backup add|update|remove</code> 新增、更新或删除备份任务
+• <code>${commandName} backup enable|watch</code> 开关备份任务或文件系统监听；<code>destination</code> 管理目标
+• <code>${commandName} backup strategy ...</code> 设置替换、删除、完成策略和扫描间隔
+• <code>${commandName} backup schedule add|clear ...</code> 设置或清空定时计划
+• <code>${commandName} backup rule add|clear ...</code> 设置扩展名、文件名、正则和大小过滤规则
+• <code>${commandName} backup restart /源目录</code> 立即重新扫描；<code>can-add</code> 查询可否继续添加
 
 <b>远程上传与离线任务</b>
-• <code>${commandName} remote add|list|list-all|remove</code>
-• 回复文件：<code>${commandName} remote upload /目标目录</code> 官方流式协议
-• <code>${commandName} remote control pause|resume|cancel UPLOAD_ID</code>
-• <code>${commandName} remote quota|clear|restart ...</code>
+• <code>${commandName} remote add URL /目录</code> 创建网盘离线下载；<code>list|list-all|remove</code> 管理离线任务
+• 回复 Telegram 文件后使用 <code>${commandName} remote upload /目标目录</code> 通过官方远程上传协议上传
+• <code>${commandName} remote control pause|resume|cancel UPLOAD_ID</code> 控制远程上传
+• <code>${commandName} remote quota|clear|restart ...</code> 查询离线配额、清理任务或重启离线任务
 
-<b>系统</b>
-• <code>${commandName} system runtime|settings|set|set-log|set-backup-limits|table|capabilities</code>
-• <code>${commandName} system cache stats|list|purge|eviction|folder</code>
-• <code>${commandName} system dir-cache set|effective|expire|vacuum|size</code>
-• <code>${commandName} system service restart|shutdown|update confirm</code>
-• <code>${commandName} system web get|set|self-cert</code>
+<b>系统、缓存与服务</b>
+• <code>${commandName} system runtime|settings|set</code> 查看或修改运行信息、系统设置
+• <code>${commandName} system set-log ...</code> 整体修改日志轮换；<code>set-backup-limits ...</code> 修改备份资源限制
+• <code>${commandName} system cache stats|list|purge|eviction|folder</code> 查看、清理和配置磁盘缓存
+• <code>${commandName} system dir-cache ...</code> 设置目录缓存 TTL、强制过期、压缩数据库或查看大小
+• <code>${commandName} system table open|dir|refs|temp</code> 查看文件表、目录缓存、引用路径和临时文件
+• <code>${commandName} system capabilities</code> 查看服务能力；<code>service restart|shutdown|update confirm</code> 控制服务
+• <code>${commandName} system web get|set|self-cert</code> 查看/修改 Web 服务或生成自签名证书
 
 <b>其他</b>
-• <code>${commandName} mount list|add|update|mount|unmount|remove</code>
-• <code>${commandName} dav status|on|off|account|ls|mkdir|rm|add|remove</code>
-• <code>${commandName} status</code> · <code>${commandName} check</code>
-• <code>${commandName} conf endpoint|token|account|path|dav-url|dav-user|dav-root|show</code>
+• <code>${commandName} mount ...</code> 管理挂载点；<code>dav ...</code> 管理 WebDAV 服务和用户
+• <code>${commandName} status</code> 查看插件配置状态；<code>check</code> 验证 CloudDrive2 连接
+• <code>${commandName} conf ...</code> 配置服务地址、账户、Token、路径和 WebDAV 参数
 
 敏感参数只发送给已配置的 CloudDrive2 服务；列表显示时会脱敏。`
 

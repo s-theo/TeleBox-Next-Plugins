@@ -9,7 +9,7 @@
   },
   "cd2": {
     "url": "https://github.com/s-theo/TeleBox-Next-Plugins/blob/main/cd2/cd2.ts?raw=true",
-    "desc": "CloudDrive2 管理：账户安全、Token 生命周期、文件/挂载点、传输任务、官方远程上传、Cloud API、备份策略、WebDAV、离线任务和系统服务控制"
+    "desc": "CloudDrive2 全面管理：账户/2FA/会话/注销、Token CRUD、文件与挂载、下载/上传/复制/合并任务、S3/SFTP/FTP/SMB/多种 OAuth 云盘、备份策略/计划/规则、官方远程上传、离线任务、WebDAV、系统设置/缓存/服务控制"
   },
   "save_sticker": {
     "url": "https://github.com/s-theo/TeleBox-Next-Plugins/blob/main/save_sticker/save_sticker.ts?raw=true",

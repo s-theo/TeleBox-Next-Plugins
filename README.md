@@ -16,22 +16,67 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 
 ## cd2 setup
 
-当前已接入的主要功能：
+当前已接入的命令和用途：
 
-1. 公共方法：服务状态、登录状态和系统验证
-2. 文件操作：目录浏览、文件查询、搜索、创建目录、移动、复制、删除、文件详情、元数据、原始路径和 Telegram 下载
-3. 挂载点：列表、新增、修改、挂载、卸载、删除
-4. 传输任务：统计、下载/上传/复制/合并列表、暂停、恢复、取消、重启和清理
-5. 云 API：WebDAV、本地目录、PikPak、115、阿里云盘、百度网盘、OneDrive、Google Drive、迅雷、123 云盘、光鸭云盘及 S3/SFTP/FTP/SMB 的添加/登录、配置查看/修改和删除
-6. 备份：新增、修改、启停、文件监听、目标、替换/删除/完成策略、时间计划、文件规则、重新扫描和删除
-7. WebDAV：服务开关、CloudDrive 账户模式、独立 WebDAV 用户、目录浏览、创建目录、删除路径
-8. 令牌与账户安全：Token 创建/修改/删除/列表/详情，2FA、恢复码、会话和账户注销
-9. 远程上传与离线任务：官方流式远程上传、暂停/恢复/取消、离线任务新增、列表、配额、清理、重启
-10. 系统：系统设置、日志/备份资源限制、磁盘缓存、目录缓存、Web 服务配置、服务能力和服务控制
+### 账户与安全
 
-Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账号密码等敏感值只作为命令参数发送，不会写入插件配置。
+- `.cd2 account status`：查看账户和本地登录状态。
+- `.cd2 account logout`：退出 CloudDrive2，并清除本地登录 Token。
+- `.cd2 account reset-email` / `.cd2 account reset`：发送密码重置邮件或执行密码重置。
+- `.cd2 account delete-email` / `.cd2 account delete ... confirm`：发送账户注销邮件，并在确认后注销账户。
+- `.cd2 2fa status|setup|enable|disable`：查看、设置、启用或关闭两步验证。
+- `.cd2 2fa recovery|regenerate`：查看或重新生成恢复码；`login` 使用 TOTP 登录。
+- `.cd2 session list|revoke|revoke-others`：查看会话、撤销指定会话或撤销其他会话。
+- `.cd2 token show|list|info|create|modify|remove`：查看、创建、修改和删除 API Token；Token 展示会脱敏。
 
-说明：以上为插件当前接入的 CloudDrive2 1.0.14 管理功能；未接入的官方 RPC 不会被伪装成已支持功能。
+### 文件、挂载和传输
+
+- `.cd2 ls|find|grep`：浏览目录、按名称搜索文件、搜索文件内容。
+- `.cd2 mkdir|rename|mv|cp|rm`：创建目录、改名、移动、复制和删除文件。
+- `.cd2 df`：查看空间使用情况；`.cd2 file detail|meta|original`：查看文件详情、元数据和原始路径。
+- `.cd2 dl /路径/文件`：下载 CloudDrive2 文件并替换当前命令消息，不生成公开下载链接。
+- `.cd2 transfer status|downloads|uploads`：查看任务总量和下载/上传进度。
+- `.cd2 transfer copies|merges`：查看复制/移动任务和合并任务。
+- `.cd2 transfer pause|resume|cancel`：控制下载/上传任务。
+- `.cd2 transfer copy ...`：暂停、恢复、取消、重启、批量控制和清理复制任务。
+- `.cd2 transfer merge cancel SOURCE DEST`：取消指定合并任务。
+- `.cd2 mount ...`：新增、修改、挂载、卸载和删除挂载点。
+
+### Cloud API
+
+- `.cd2 api list`：列出已配置的云盘；`remove` 删除云盘配置。
+- `.cd2 api add`：添加 WebDAV、本地目录、PikPak、115、阿里、百度、OneDrive、Google、迅雷、123 云盘、光鸭云盘和 CloudDrive。
+- `.cd2 api add s3|sftp|ftp|smb`：添加 S3、SFTP、FTP/FTPS 或 SMB 存储。
+- `.cd2 api config get|set`：查看或修改线程数、限速、代理、TLS 和下载选项。
+- `.cd2 api discover-smb` / `.cd2 api discover-smb-shares`：发现 SMB 服务器及其共享目录。
+- OAuth/二维码登录：用于 115 Open、123 云盘、光鸭云盘、迅雷 Open 等服务。
+
+### 备份
+
+- `.cd2 backup list|status`：查看备份列表、状态、目标、规则和计划。
+- `.cd2 backup add|update|remove`：新增、更新和删除备份任务。
+- `.cd2 backup enable|watch`：开关备份任务和文件系统监听；`destination` 管理备份目标。
+- `.cd2 backup strategy`：设置文件替换、删除、完成策略和扫描间隔。
+- `.cd2 backup schedule add|clear`：添加或清空按时间/星期执行的计划。
+- `.cd2 backup rule add|clear`：设置扩展名、文件名、正则、大小及黑白名单规则。
+- `.cd2 backup restart`：立即重新扫描；`can-add` 查询是否还能添加备份。
+
+### 远程上传、离线任务和系统
+
+- 回复 Telegram 文件后使用 `.cd2 remote upload /目标目录`：通过 CloudDrive2 官方远程上传协议上传。
+- `.cd2 remote control pause|resume|cancel`：控制远程上传。
+- `.cd2 remote add|list|list-all|remove`：创建、查看和删除网盘离线下载任务。
+- `.cd2 remote quota|clear|restart`：查询离线配额、清理离线任务、重启失败任务。
+- `.cd2 system runtime|settings|set`：查看运行信息、系统设置和修改单项设置。
+- `.cd2 system set-log` / `.cd2 system set-backup-limits`：整体修改日志轮换和备份资源限制。
+- `.cd2 system cache ...`：查看、清理和配置磁盘缓存。
+- `.cd2 system dir-cache ...`：设置目录缓存 TTL、强制过期、压缩缓存数据库和查看大小。
+- `.cd2 system table open|dir|refs|temp`：查看打开文件表、目录缓存、引用路径和临时文件。
+- `.cd2 system web get|set|self-cert`：查看/修改 Web 服务配置或生成自签名证书。
+- `.cd2 system service restart|shutdown|update confirm`：重启、关闭或更新服务。
+- `.cd2 dav ...`：管理 WebDAV 服务、账户模式、独立用户和目录操作。
+
+Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账号密码等敏感值只作为命令参数发送，不会写入插件配置。具体参数格式请使用 `.cd2 h` 查看。
 
 The `cd2` plugin uses CloudDrive2's gRPC API. Configure it in Telegram after loading the plugin:
 
