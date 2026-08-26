@@ -304,7 +304,14 @@ const compactHelpSections: HelpSection[] = [
   {
     title: '基础配置',
     lines: [
-      `${commandName} conf — 配置服务地址、账户、Token、路径和 WebDAV`,
+      `${commandName} conf show — 查看配置，敏感值自动脱敏`,
+      `${commandName} conf endpoint 地址 — 设置 CloudDrive2 服务地址`,
+      `${commandName} conf account 用户名 密码 — 保存 CloudDrive2 账户用户名和密码`,
+      `${commandName} conf token API令牌 — 保存 API Token，后续请求使用该 Token`,
+      `${commandName} conf path 默认路径 — 设置文件操作和任务使用的默认路径`,
+      `${commandName} conf dav-url WebDAV地址 — 设置 WebDAV 服务地址`,
+      `${commandName} conf dav-user 用户名 密码 — 设置 WebDAV 用户名和密码`,
+      `${commandName} conf dav-root 上传根目录 — 设置 WebDAV 文件上传根目录`,
       `${commandName} collapse — 查看原生折叠状态`,
       `${commandName} collapse on — 开启原生折叠`,
       `${commandName} collapse off — 关闭原生折叠`,
@@ -524,7 +531,7 @@ const buildHelpDescription = (collapse: boolean): string => {
 
 const HELP_LINES_PER_MESSAGE = 20
 
-const buildHelpMessages = (collapse: boolean): string[] =>
+const _buildHelpMessages = (collapse: boolean): string[] =>
   helpSections.flatMap(({ title, lines }) => {
     const messages: string[] = []
     for (let offset = 0; offset < lines.length; offset += HELP_LINES_PER_MESSAGE) {
@@ -2515,6 +2522,28 @@ class Cd2Plugin extends Plugin {
 
   private async handleConfig(msg: MessageContext, args: string[]): Promise<void> {
     const action = args[0]?.toLowerCase()
+    if (!action) {
+      await msg.edit({
+        text: htmlText(
+          [
+            '<b>⚙️ CloudDrive2 配置命令</b>',
+            '',
+            `<code>${commandName} conf show</code> — 查看当前配置，Token、密码等敏感值自动脱敏`,
+            `<code>${commandName} conf endpoint 地址</code> — 设置 CloudDrive2 服务地址`,
+            `<code>${commandName} conf account 用户名 密码</code> — 保存 CloudDrive2 账户用户名和密码`,
+            `<code>${commandName} conf token API令牌</code> — 保存 API Token，后续请求使用该 Token`,
+            `<code>${commandName} conf path 默认路径</code> — 设置文件操作和任务使用的默认路径`,
+            `<code>${commandName} conf dav-url WebDAV地址</code> — 设置 WebDAV 服务地址`,
+            `<code>${commandName} conf dav-user 用户名 密码</code> — 设置 WebDAV 用户名和密码`,
+            `<code>${commandName} conf dav-root 上传根目录</code> — 设置 Telegram 文件上传到 WebDAV 的根目录`,
+            '',
+            '敏感参数不会在回复、帮助或日志中显示。详细参数请按上面的命令名称执行。'
+          ].join('\n')
+        ),
+        disableWebPreview: true
+      })
+      return
+    }
     if (action === 'show') {
       const config = await this.getConfig()
       await msg.edit({
@@ -2583,7 +2612,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: htmlText(`✅ WebDAV 上传根目录已设置为 <code>${htmlEscape(webdavRoot)}</code>`) })
       return
     }
-    throw new Error(`用法：${commandName} conf endpoint|token|account|path|dav-url|dav-user|dav-root|show`)
+    throw new Error(`未知配置项，请使用 ${commandName} conf 查看配置命令`)
   }
 
   private async handleLogin(msg: MessageContext): Promise<void> {
@@ -3936,7 +3965,7 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: '✅ 文件已重命名' })
       return
     }
-    throw new Error(`未知文件操作，使用 ${commandName} h 查看帮助`)
+    throw new Error('未知文件操作，请使用 .h cd2 查看帮助')
   }
 
   cmdHandlers: Record<string, (msg: MessageContext) => Promise<void>> = {
@@ -3944,11 +3973,10 @@ class Cd2Plugin extends Plugin {
       try {
         const args = tokenize(msg.text).slice(1)
         const subcommand = args[0]?.toLowerCase()
-        if (!subcommand || subcommand === 'h') {
-          const config = await this.getConfig()
-          const messages = buildHelpMessages(config.collapse)
-          await msg.edit({ text: htmlText(messages[0]), disableWebPreview: true })
-          for (const message of messages.slice(1)) await msg.replyText(htmlText(message), { disableWebPreview: true })
+        if (!subcommand) {
+          await msg.edit({ text: htmlText('请使用 <code>.h cd2</code> 查看 CloudDrive2 帮助'), disableWebPreview: true })
+        } else if (subcommand === 'h') {
+          throw new Error('不再支持 .cd2 h，请使用 .h cd2 查看帮助')
         } else if (subcommand === 'conf') {
           await this.handleConfig(msg, args.slice(1))
         } else if (subcommand === 'collapse') {
@@ -4002,7 +4030,7 @@ class Cd2Plugin extends Plugin {
         } else if (['mkdir', 'rm', 'mv', 'cp', 'rename'].includes(subcommand)) {
           await this.handleMutation(msg, args)
         } else {
-          throw new Error(`未知命令，使用 ${commandName} h 查看帮助`)
+          throw new Error('未知命令，请使用 .h cd2 查看帮助')
         }
       } catch (error) {
         await msg.edit({ text: htmlText(`❌ ${htmlEscape(errorMessage(error))}`), disableWebPreview: true })

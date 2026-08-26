@@ -16,11 +16,21 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 
 ## cd2 setup
 
+帮助入口：`.h cd2`。直接输入 `.cd2` 不会显示帮助；`.cd2 h` 不是帮助命令。
+
 当前已接入的命令和用途：
 
 ### 账户与安全
 
-- `.cd2 collapse`：查看 Telegram 原生折叠状态；`.cd2 collapse on` 开启，`.cd2 collapse off` 关闭。帮助开启折叠时按功能分组显示可展开内容。
+- `.cd2 collapse`：查看 Telegram 原生折叠状态；`.cd2 collapse on` 开启，`.cd2 collapse off` 关闭。`.h cd2` 会按当前设置显示或关闭原生折叠。
+- `.cd2 conf show`：查看当前配置，服务地址、账户、Token、默认路径和 WebDAV 配置中的敏感值会自动脱敏。
+- `.cd2 conf endpoint 地址`：设置 CloudDrive2 服务地址。
+- `.cd2 conf account 用户名 密码`：保存 CloudDrive2 账户用户名和密码，并清除旧 API Token。
+- `.cd2 conf token API令牌`：保存 API Token，后续 CloudDrive2 请求优先使用该 Token。
+- `.cd2 conf path 默认路径`：设置文件浏览、上传、下载和任务命令使用的默认路径。
+- `.cd2 conf dav-url WebDAV地址`：设置 WebDAV 服务地址。
+- `.cd2 conf dav-user 用户名 密码`：设置 WebDAV 用户名和密码；未单独配置时可使用 CloudDrive2 账户。
+- `.cd2 conf dav-root 上传根目录`：设置 Telegram 文件通过 WebDAV 上传时使用的根目录。
 - `.cd2 account logout`：退出 CloudDrive2，并清除本地登录 Token。
 - `.cd2 account reset-email` / `.cd2 account reset`：发送密码重置邮件或执行密码重置。
 - `.cd2 account delete-email` / `.cd2 account delete DELETE_CODE PASSWORD [TOTP] [forfeit] confirm`：发送账户注销邮件，并在确认后注销账户。
@@ -82,7 +92,7 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 - `.cd2 dav ls|mkdir|rm`：浏览、创建或删除 WebDAV 路径。
 - `.cd2 dav add|remove`：添加或删除独立 WebDAV 用户。
 
-Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账号密码等敏感值只作为命令参数发送，不会写入插件配置。具体参数格式请使用 `.cd2 h` 查看。
+Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账号密码等敏感值只作为命令参数发送，不会写入插件配置。具体参数格式请使用 `.h cd2` 查看对应命令说明。
 
 The `cd2` plugin uses CloudDrive2's gRPC API. Configure it in Telegram after loading the plugin:
 
