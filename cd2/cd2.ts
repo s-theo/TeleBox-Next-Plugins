@@ -43,6 +43,7 @@ interface Cd2Config {
 
 type Db = Low<Cd2Config>
 type Cd2File = {
+  id?: string
   name?: string
   fullPathName?: string
   size?: string | number
@@ -60,6 +61,27 @@ const DEFAULT_ENDPOINT = 'http://localhost:19798'
 const REQUEST_TIMEOUT = 20_000
 const MAX_ITEMS = 40
 const MAX_MESSAGE_LENGTH = 3800
+const OFFLINE_MONITOR_MAX_MS = 15 * 60_000
+const OFFLINE_RESULT_GRACE_MS = 2 * 60_000
+
+const waitWithSignal = (durationMs: number, signal: AbortSignal): Promise<boolean> => {
+  if (signal.aborted) return Promise.resolve(false)
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (completed: boolean): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
+      resolve(completed)
+    }
+    const onAbort = (): void => finish(false)
+    const timer = setTimeout(() => finish(true), durationMs)
+    timer.unref()
+    signal.addEventListener('abort', onAbort, { once: true })
+    if (signal.aborted) onAbort()
+  })
+}
 
 type HelpSection = { key: string; aliases: string[]; title: string; lines: string[] }
 
@@ -258,7 +280,7 @@ const helpSections: HelpSection[] = [
     aliases: ['offline'],
     title: '离线下载',
     lines: [
-      `${commandName} remote add <目录> <磁力链接> — 添加离线下载任务`,
+      `${commandName} remote add <目录> <磁力链接> — 提交离线下载，自动跟踪并确认结果路径 15 分钟`,
       `${commandName} remote list <目录> — 查看指定目录的离线任务`,
       `${commandName} remote list-all <目录> [页码] — 分页查看该云盘的全部离线任务`,
       `${commandName} remote remove <目录> <信息哈希> confirm — 删除指定离线任务`,
@@ -1606,6 +1628,7 @@ const decodeFile = (buffer: Buffer): Cd2File => {
   const fields = parseFields(buffer)
   const fileType = Number(values(fields, 5).at(0) || 0)
   return {
+    id: text(values(fields, 1).at(0)),
     name: text(values(fields, 2).at(0)),
     fullPathName: text(values(fields, 3).at(0)),
     size: integer(values(fields, 4).at(0)),
@@ -2362,8 +2385,11 @@ class Cd2Plugin extends Plugin {
   description = (): string => buildHelpIndex()
   private dbPromise?: Promise<Db>
   private client?: Cd2Client
+  private readonly offlineMonitorControllers = new Set<AbortController>()
 
   cleanup(): void {
+    for (const controller of this.offlineMonitorControllers) controller.abort()
+    this.offlineMonitorControllers.clear()
     this.client?.close()
     this.client = undefined
     this.dbPromise = undefined
@@ -3539,6 +3565,172 @@ class Cd2Plugin extends Plugin {
     throw new Error(`没有找到离线任务：${inputHash}`)
   }
 
+  private offlineTaskSignature(task: RpcResponse): string {
+    const rawProgress = Number(task.percentDone || 0)
+    const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0
+    return [Number(task.status ?? 4), progress.toFixed(1), String(task.name || ''), String(task.size || '')].join(':')
+  }
+
+  private async resolveOfflineResultPath(targetPath: string, task: RpcResponse, hintedPath: string): Promise<string> {
+    const normalizedHint = hintedPath ? normalizePath(hintedPath) : ''
+    const taskName = String(task.name || '').trim()
+    const taskFileId = String(task.fileId || '').trim()
+    if (!normalizedHint && !taskName && !taskFileId) return ''
+    try {
+      const replies = await this.getClient().stream('GetSubFiles', { path: targetPath, forceRefresh: true })
+      const files = replies.flatMap((reply) => (reply.subFiles || []) as Cd2File[])
+      const normalizedName = taskName.normalize('NFC').toLowerCase()
+      const result =
+        files.find((file) => normalizedHint && normalizePath(String(file.fullPathName || `${targetPath}/${file.name || ''}`)) === normalizedHint) ||
+        files.find((file) => taskFileId && String(file.id || '') === taskFileId) ||
+        files.find((file) => taskName && String(file.name || '') === taskName) ||
+        files.find(
+          (file) =>
+            taskName &&
+            String(file.name || '')
+              .normalize('NFC')
+              .toLowerCase() === normalizedName
+        )
+      if (!result) return ''
+      return normalizePath(String(result.fullPathName || `${targetPath}/${result.name || taskName}`))
+    } catch {
+      return ''
+    }
+  }
+
+  private formatOfflineMonitorMessage(task: RpcResponse | undefined, fallbackName: string, targetPath: string, infoHash: string, resultPath = '', titleOverride = '', extraLines: string[] = []): string {
+    const status = task ? Number(task.status ?? 4) : -1
+    const title = titleOverride || (status === 0 ? '⏳ <b>离线下载等待中</b>' : status === 1 ? '⬇️ <b>离线下载中</b>' : status === 2 ? (resultPath ? '✅ <b>离线下载完成</b>' : '⚠️ <b>任务显示完成，但未找到结果文件</b>') : status === 3 ? '❌ <b>离线下载失败</b>' : '⚠️ <b>离线下载状态未知</b>')
+    const rawProgress = Number(task?.percentDone || 0)
+    const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0
+    const size = task?.size
+    return [
+      title,
+      '',
+      `<b>名称：</b> <code>${htmlEscape(String(task?.name || fallbackName))}</code>`,
+      `<b>保存目录：</b> <code>${htmlEscape(targetPath)}</code>`,
+      `<b>状态：</b> ${htmlEscape(status >= 0 ? OFFLINE_STATUS_LABELS[status] || '未知' : '暂未查询到任务')}`,
+      ...(task ? [`<b>进度：</b> ${progress.toFixed(progress % 1 ? 1 : 0)}%`] : []),
+      ...(size && Number(size) > 0 ? [`<b>大小：</b> ${formatBytes(size)}`] : []),
+      `<b>哈希：</b> <code>${htmlEscape(infoHash)}</code>`,
+      `<b>结果路径：</b> ${resultPath ? `<code>${htmlEscape(resultPath)}</code>` : status === 2 ? '⚠️ 未找到' : status === 3 ? '未生成' : status === 4 ? '未确认' : '等待任务完成'}`,
+      ...extraLines
+    ].join('\n')
+  }
+
+  private async monitorOfflineTask(msg: MessageContext, targetPath: string, infoHash: string, fallbackName: string, resultPathHint: string, initialTask: RpcResponse | undefined, signal: AbortSignal): Promise<void> {
+    let resultPath = ''
+    let lastTask = initialTask
+    const initialStatus = Number(initialTask?.status ?? -1)
+    let lastSignature = initialTask && [0, 1].includes(initialStatus) ? this.offlineTaskSignature(initialTask) : ''
+    let pendingInitialTask = initialTask && [2, 3, 4].includes(initialStatus) ? initialTask : undefined
+    const monitorDeadline = Date.now() + OFFLINE_MONITOR_MAX_MS
+    let finishedAt = initialStatus === 2 ? Date.now() : 0
+    let consecutiveErrors = 0
+    while (!signal.aborted) {
+      let task = pendingInitialTask
+      pendingInitialTask = undefined
+      if (!task) {
+        const deadline = finishedAt ? finishedAt + OFFLINE_RESULT_GRACE_MS : monitorDeadline
+        if (Date.now() >= deadline) break
+        const elapsed = OFFLINE_MONITOR_MAX_MS - (monitorDeadline - Date.now())
+        const interval = elapsed < 60_000 ? 5_000 : elapsed < 5 * 60_000 ? 15_000 : 30_000
+        if (!(await waitWithSignal(Math.min(interval, Math.max(1, deadline - Date.now())), signal))) return
+        try {
+          const files = await this.getOfflineFiles(targetPath, true)
+          task = files.find((file) => String(file.infoHash || '').toLowerCase() === infoHash.toLowerCase())
+          consecutiveErrors = 0
+        } catch (error) {
+          if (signal.aborted) return
+          consecutiveErrors += 1
+          if (consecutiveErrors >= 3) throw error
+          continue
+        }
+      }
+
+      if (!task) {
+        const canProbeResult = lastTask ? Number(lastTask.status ?? 4) <= 2 : Boolean(resultPathHint)
+        if (canProbeResult) {
+          const probeTask = lastTask || { name: fallbackName }
+          const discoveredPath = await this.resolveOfflineResultPath(targetPath, probeTask, resultPathHint)
+          if (discoveredPath) {
+            await msg.edit({ text: htmlText(this.formatOfflineMonitorMessage({ ...probeTask, status: 2, percentDone: 100 }, fallbackName, targetPath, infoHash, discoveredPath)) })
+            return
+          }
+        }
+        continue
+      }
+
+      lastTask = task
+      const status = Number(task.status ?? 4)
+      if (status === 2) {
+        if (!finishedAt) finishedAt = Date.now()
+        resultPath = await this.resolveOfflineResultPath(targetPath, task, resultPathHint)
+        if (resultPath) {
+          await msg.edit({ text: htmlText(this.formatOfflineMonitorMessage(task, fallbackName, targetPath, infoHash, resultPath)) })
+          return
+        }
+        const signature = `${this.offlineTaskSignature(task)}:waiting-result`
+        if (signature !== lastSignature) {
+          await msg.edit({ text: htmlText(this.formatOfflineMonitorMessage(task, fallbackName, targetPath, infoHash, '', '⏳ <b>云端任务已完成，正在确认结果文件…</b>')) })
+          lastSignature = signature
+        }
+        continue
+      }
+
+      const signature = this.offlineTaskSignature(task)
+      if (signature !== lastSignature) {
+        await msg.edit({ text: htmlText(this.formatOfflineMonitorMessage(task, fallbackName, targetPath, infoHash, resultPath)) })
+        lastSignature = signature
+      }
+      if ([3, 4].includes(status)) return
+    }
+
+    if (signal.aborted) return
+    if (lastTask && Number(lastTask.status ?? 4) === 2 && !resultPath) {
+      await msg.edit({
+        text: htmlText(this.formatOfflineMonitorMessage(lastTask, fallbackName, targetPath, infoHash, '', '⚠️ <b>任务显示完成，但未找到结果文件</b>', ['<b>说明：</b> CD2/网盘没有返回可验证的结果路径', `<b>查看目录：</b> <code>${htmlEscape(`${commandName} ${targetPath} ls`)}</code>`]))
+      })
+      return
+    }
+    await msg.edit({
+      text: htmlText(
+        this.formatOfflineMonitorMessage(lastTask, fallbackName, targetPath, infoHash, resultPath, '⏸ <b>离线下载仍在进行</b>', [
+          `<b>说明：</b> 自动跟踪已在 ${OFFLINE_MONITOR_MAX_MS / 60_000} 分钟后结束，任务仍会由云盘继续处理`,
+          `<b>查看：</b> <code>${htmlEscape(`${commandName} remote list ${targetPath}`)}</code>`
+        ])
+      )
+    })
+  }
+
+  private startOfflineMonitor(msg: MessageContext, targetPath: string, infoHash: string, fallbackName: string, resultPath: string, initialTask: RpcResponse | undefined): void {
+    const controller = new AbortController()
+    this.offlineMonitorControllers.add(controller)
+    void this.monitorOfflineTask(msg, targetPath, infoHash, fallbackName, resultPath, initialTask, controller.signal)
+      .catch(async (error) => {
+        if (controller.signal.aborted) return
+        try {
+          await msg.edit({
+            text: htmlText(
+              [
+                '⚠️ <b>离线任务已提交，但自动跟踪已停止</b>',
+                '',
+                `<b>名称：</b> <code>${htmlEscape(fallbackName)}</code>`,
+                `<b>保存目录：</b> <code>${htmlEscape(targetPath)}</code>`,
+                `<b>哈希：</b> <code>${htmlEscape(infoHash)}</code>`,
+                '<b>结果路径：</b> 未确认',
+                `<b>原因：</b> ${htmlEscape(errorMessage(error))}`,
+                `<b>查看：</b> <code>${htmlEscape(`${commandName} remote list ${targetPath}`)}</code>`
+              ].join('\n')
+            )
+          })
+        } catch {
+          // The task remains active even when Telegram can no longer edit the original message.
+        }
+      })
+      .finally(() => this.offlineMonitorControllers.delete(controller))
+  }
+
   private async showOfflineFiles(msg: MessageContext, title: string, targetPath: string, files: RpcResponse[]): Promise<void> {
     const rows = files.length
       ? files.slice(0, MAX_ITEMS).map((file, index) => {
@@ -3595,16 +3787,18 @@ class Cd2Plugin extends Plugin {
       await msg.edit({
         text: htmlText(
           [
-            '✅ <b>离线下载添加成功</b>',
+            '✅ <b>离线任务已提交</b>',
             '',
             `<b>名称：</b> <code>${htmlEscape(name)}</code>`,
             `<b>保存目录：</b> <code>${htmlEscape(toFolder)}</code>`,
             `<b>状态：</b> ${htmlEscape(status)}`,
             ...(infoHash ? [`<b>哈希：</b> <code>${htmlEscape(infoHash)}</code>`] : []),
-            ...(resultPaths[0] ? [`<b>结果路径：</b> <code>${htmlEscape(resultPaths[0])}</code>`] : [])
+            `<b>结果路径：</b> ${resultPaths[0] ? `<code>${htmlEscape(resultPaths[0])}</code>（待目录确认）` : '等待任务完成后确认'}`,
+            `<b>自动跟踪：</b> 已开启，状态变化会更新本消息（最多 ${OFFLINE_MONITOR_MAX_MS / 60_000} 分钟）`
           ].join('\n')
         )
       })
+      this.startOfflineMonitor(msg, toFolder, infoHash, name, resultPaths[0] || '', task)
       return
     }
 

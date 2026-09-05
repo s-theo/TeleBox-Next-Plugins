@@ -78,7 +78,7 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 
 ### 离线任务和系统
 
-- `.cd2 remote add /目标目录 magnet:...`：添加离线下载；目录固定放在磁力链接前面。
+- `.cd2 remote add /目标目录 magnet:...`：提交离线下载；目录固定放在磁力链接前面。提交后会在原消息中自动跟踪状态和进度，最长 15 分钟；只有在目标目录中确认文件后才显示完成及结果路径，云端任务显示完成但目录无文件时会明确警告。
 - `.cd2 remote list /目录` / `.cd2 remote list-all /目录 [页码]`：查看指定目录或所属云盘的离线任务。
 - `.cd2 remote remove /目录 INFO_HASH confirm`：删除任务；`.cd2 remote restart /目录 INFO_HASH`：重启任务。
 - `.cd2 remote quota /目录`：查询配额；`.cd2 remote clear /目录 all|finished|error|downloading [delete] confirm`：清理任务。
