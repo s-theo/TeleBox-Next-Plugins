@@ -34,7 +34,6 @@ interface Cd2Config {
   token: string
   accountUsername: string
   accountPassword: string
-  defaultPath: string
   webdavUrl: string
   webdavUsername: string
   webdavPassword: string
@@ -62,7 +61,7 @@ const REQUEST_TIMEOUT = 20_000
 const MAX_ITEMS = 40
 const MAX_MESSAGE_LENGTH = 3800
 
-type HelpSection = { title: string; lines: string[] }
+type HelpSection = { key: string; aliases: string[]; title: string; lines: string[] }
 
 const parseHelpLine = (line: string): { rawCommand: string; description: string } => {
   const separator = line.indexOf(' — ')
@@ -72,106 +71,23 @@ const parseHelpLine = (line: string): { rawCommand: string; description: string 
   }
 }
 
-const helpCommand = (rawCommand: string): string =>
-  rawCommand
-    .split(/\s+/)
-    .filter((token, index) => index === 0 || (token !== 'confirm' && /^[a-z0-9][a-z0-9-]*$/.test(token)))
-    .join(' ')
-
 const formatHelpLine = (line: string): string => {
   const { rawCommand, description } = parseHelpLine(line)
-  return `<code>${htmlEscape(helpCommand(rawCommand))}</code>${description ? ` — ${htmlEscape(description)}` : ''}`
-}
-
-type HelpMergeGroup = { prefix: string; variants: string[]; description: string }
-
-const helpMergeGroups = (prefix: string): HelpMergeGroup[] => [
-  { prefix: `${prefix} collapse`, variants: ['on', 'off'], description: '开启或关闭原生折叠' },
-  { prefix: `${prefix} conf`, variants: ['show', 'endpoint', 'account', 'token', 'path', 'dav-url', 'dav-user', 'dav-root'], description: '查看或设置连接、账户、Token、默认路径和 WebDAV 配置' },
-  { prefix: `${prefix}`, variants: ['login', 'status', 'check', 'tasks'], description: '登录、查看状态、检查连接和任务统计' },
-  { prefix: `${prefix} 2fa`, variants: ['status', 'setup', 'enable', 'disable', 'recovery', 'regenerate', 'login', 'send-disable-email', 'disable-email', 'unbind'], description: '查看、设置、登录或关闭两步验证' },
-  { prefix: `${prefix} account`, variants: ['status', 'logout'], description: '查看或退出账户' },
-  { prefix: `${prefix} account`, variants: ['reset-email', 'reset'], description: '重置账户密码' },
-  { prefix: `${prefix} account`, variants: ['delete-email', 'delete'], description: '发送注销邮件或注销账户' },
-  { prefix: `${prefix} session`, variants: ['list', 'revoke', 'revoke-others'], description: '列出或撤销登录会话' },
-  { prefix: `${prefix} token`, variants: ['show', 'clear', 'login', 'list', 'info', 'create', 'modify', 'remove'], description: '查看、登录、创建、修改或删除 Token' },
-  { prefix: `${prefix} file`, variants: ['detail', 'meta', 'original'], description: '查看文件详情、元数据或原始路径' },
-  { prefix: `${prefix}`, variants: ['ls', 'find', 'grep', 'df'], description: '浏览、查找、搜索或统计文件' },
-  { prefix: `${prefix}`, variants: ['mkdir', 'rename', 'mv', 'cp', 'rm'], description: '创建、重命名、移动、复制或删除文件' },
-  { prefix: `${prefix} mount`, variants: ['list', 'can-add'], description: '查看挂载点或添加配额' },
-  { prefix: `${prefix} dav`, variants: ['status', 'on', 'off'], description: '查看状态或开关 WebDAV' },
-  { prefix: `${prefix} dav account`, variants: ['on', 'off'], description: '开关 WebDAV 账户模式' },
-  { prefix: `${prefix} mount`, variants: ['mount', 'unmount'], description: '挂载或卸载挂载点' },
-  { prefix: `${prefix} transfer`, variants: ['status', 'downloads', 'uploads'], description: '查看任务统计或下载上传任务' },
-  { prefix: `${prefix} transfer`, variants: ['copies', 'merges'], description: '查看复制或合并任务' },
-  { prefix: `${prefix} transfer`, variants: ['pause all', 'resume all', 'cancel all'], description: '暂停、恢复或取消全部任务' },
-  { prefix: `${prefix} transfer`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消任务' },
-  { prefix: `${prefix} transfer copy`, variants: ['pause', 'resume', 'cancel', 'restart'], description: '控制指定复制任务' },
-  { prefix: `${prefix} transfer copy`, variants: ['pause-all', 'resume-all', 'remove-completed', 'remove-all'], description: '批量控制或清理复制任务' },
-  { prefix: `${prefix} api add`, variants: ['s3', 'sftp', 'ftp', 'smb'], description: '添加 S3、SFTP、FTP 或 SMB' },
-  { prefix: `${prefix} api add`, variants: ['115-open', '115-open-qrcode'], description: '添加 115 Open 云盘' },
-  { prefix: `${prefix} api add`, variants: ['115-cookie', '115-qrcode'], description: '添加 115 云盘' },
-  { prefix: `${prefix} api add`, variants: ['aliyun-oauth', 'aliyun-refresh', 'aliyun-qrcode'], description: '添加阿里云盘' },
-  { prefix: `${prefix} api add`, variants: ['google-oauth', 'google-refresh'], description: '添加 Google Drive' },
-  { prefix: `${prefix} api add`, variants: ['xunlei-oauth', 'xunlei-open'], description: '添加迅雷云盘' },
-  { prefix: `${prefix} api add`, variants: ['guangya-oauth', 'guangya-qrcode'], description: '添加光鸭云盘' },
-  { prefix: `${prefix} api add`, variants: ['webdav', 'local', 'pikpak'], description: '添加 WebDAV、本地目录或 PikPak' },
-  { prefix: `${prefix} api`, variants: ['list', 'can-add'], description: '查看云盘列表或添加配额' },
-  { prefix: `${prefix} api add`, variants: ['baidu-oauth', 'onedrive-oauth'], description: '添加百度网盘或 OneDrive' },
-  { prefix: `${prefix} api config`, variants: ['get', 'set'], description: '查看或修改云 API 配置' },
-  { prefix: `${prefix} api`, variants: ['discover-smb', 'discover-smb-shares'], description: '发现 SMB 服务器或共享目录' },
-  { prefix: `${prefix} backup`, variants: ['enable', 'watch'], description: '开关备份任务或文件监听' },
-  { prefix: `${prefix} backup`, variants: ['list', 'can-add'], description: '查看备份列表或添加配额' },
-  { prefix: `${prefix} backup`, variants: ['status', 'restart'], description: '查看状态或重新扫描备份' },
-  { prefix: `${prefix} backup`, variants: ['add', 'update', 'remove'], description: '添加、更新或删除备份' },
-  { prefix: `${prefix} backup destination`, variants: ['add', 'remove'], description: '添加或删除备份目标' },
-  { prefix: `${prefix} backup schedule`, variants: ['add', 'clear'], description: '添加或清空时间计划' },
-  { prefix: `${prefix} backup rule`, variants: ['add', 'clear'], description: '添加或清空文件规则' },
-  { prefix: `${prefix} remote control`, variants: ['pause', 'resume', 'cancel'], description: '暂停、恢复或取消远程上传' },
-  { prefix: `${prefix} remote`, variants: ['add', 'list', 'list-all'], description: '创建或查看离线任务' },
-  { prefix: `${prefix} remote`, variants: ['quota', 'clear', 'restart'], description: '查询、清理或重启离线任务' },
-  { prefix: `${prefix} system cache`, variants: ['stats', 'list', 'purge', 'eviction'], description: '查看、清理或设置磁盘缓存' },
-  { prefix: `${prefix} system cache folder`, variants: ['set', 'remove'], description: '设置或删除缓存目录规则' },
-  { prefix: `${prefix} system dir-cache`, variants: ['set', 'effective', 'expire', 'vacuum', 'size'], description: '管理目录缓存' },
-  { prefix: `${prefix} system`, variants: ['runtime', 'settings', 'capabilities', 'set', 'set-log', 'set-backup-limits'], description: '查看或修改系统、日志、备份资源和服务能力' },
-  { prefix: `${prefix} system table`, variants: ['open', 'dir', 'refs', 'temp'], description: '查看系统文件表' },
-  { prefix: `${prefix} system service`, variants: ['restart', 'shutdown', 'update'], description: '重启、关闭或更新服务' },
-  { prefix: `${prefix} system web`, variants: ['get', 'set', 'self-cert'], description: '查看或修改 Web 服务' },
-  { prefix: `${prefix} mount`, variants: ['add', 'update', 'remove'], description: '添加、修改或删除挂载点' },
-  { prefix: `${prefix} dav`, variants: ['ls', 'mkdir'], description: '列出或创建 WebDAV 目录' },
-  { prefix: `${prefix} dav`, variants: ['rm', 'add', 'remove'], description: '删除路径或管理 WebDAV 用户' }
-]
-
-const buildHelpSection = ({ title, lines }: HelpSection): string => {
-  const remaining = new Map(lines.map((line) => [helpCommand(parseHelpLine(line).rawCommand), line]))
-  const output: string[] = []
-  for (const group of helpMergeGroups(commandName)) {
-    const matched = group.variants.map((variant) => `${group.prefix} ${variant}`).filter((command) => remaining.has(command))
-    if (matched.length < 2) continue
-    for (const command of matched) remaining.delete(command)
-    output.push(`<code>${htmlEscape(`${group.prefix} ${group.variants.filter((variant) => matched.includes(`${group.prefix} ${variant}`)).join('|')}`)}</code> — ${htmlEscape(group.description)}`)
-  }
-  for (const line of lines) {
-    const command = helpCommand(parseHelpLine(line).rawCommand)
-    if (remaining.has(command)) {
-      output.push(formatHelpLine(line))
-      remaining.delete(command)
-    }
-  }
-  return `<b>☁️ ${htmlEscape(title)}</b>\n${output.join('\n')}`
+  return `<code>${htmlEscape(rawCommand)}</code>${description ? `\n${htmlEscape(description)}` : ''}`
 }
 const helpSections: HelpSection[] = [
   {
+    key: 'config',
+    aliases: ['conf', 'base'],
     title: '基础配置',
     lines: [
       `${commandName} conf show — 查看配置，敏感值自动脱敏`,
       `${commandName} conf endpoint 地址 — 设置 CloudDrive2 服务地址`,
       `${commandName} conf account 用户名 密码 — 保存 CloudDrive2 账户用户名和密码`,
       `${commandName} conf token API令牌 — 保存 API Token，后续请求使用该 Token`,
-      `${commandName} conf path 默认路径 — 设置文件操作和任务使用的默认路径`,
       `${commandName} conf dav-url WebDAV地址 — 设置 WebDAV 服务地址`,
       `${commandName} conf dav-user 用户名 密码 — 设置 WebDAV 用户名和密码`,
-      `${commandName} conf dav-root 上传根目录 — 设置 WebDAV 文件上传根目录`,
+      `${commandName} conf dav-root 账户根目录 — 设置 WebDAV 账户默认根目录`,
       `${commandName} collapse — 查看原生折叠状态`,
       `${commandName} collapse on — 开启原生折叠`,
       `${commandName} collapse off — 关闭原生折叠`,
@@ -182,6 +98,8 @@ const helpSections: HelpSection[] = [
     ]
   },
   {
+    key: 'account',
+    aliases: ['auth', 'security'],
     title: '账户安全、2FA、会话与 Token',
     lines: [
       `${commandName} account register 用户名 密码 — 注册 CloudDrive2 账户`,
@@ -215,22 +133,25 @@ const helpSections: HelpSection[] = [
     ]
   },
   {
+    key: 'file',
+    aliases: ['files', 'io'],
     title: '文件、下载、上传与挂载',
     lines: [
-      `${commandName} ls 路径 — 浏览 CloudDrive2 目录`,
-      `${commandName} find 路径 — 按路径或名称查找文件`,
-      `${commandName} grep 关键词 路径 — 搜索文件内容`,
-      `${commandName} df 路径 — 查看文件或目录占用空间`,
-      `${commandName} file detail 路径 — 查看文件数量、大小、分享和原始路径`,
-      `${commandName} file meta 路径 — 查看文件元数据键值`,
-      `${commandName} file original 路径 — 查看文件的原始来源路径`,
-      `${commandName} mkdir 父目录 文件夹名 — 创建文件夹`,
-      `${commandName} rename 文件 新名称 — 重命名文件或文件夹`,
-      `${commandName} mv 源路径 目标目录 — 移动文件或文件夹`,
-      `${commandName} cp 源路径 目标目录 — 复制文件或文件夹`,
-      `${commandName} rm 路径 confirm — 删除文件或文件夹`,
-      `${commandName} dl 文件路径 — 下载文件并替换当前 Telegram 命令消息`,
-      `${commandName} up 目标路径 — 回复 Telegram 文件并通过 WebDAV 上传`,
+      `${commandName} <目录> ls — 浏览 CloudDrive2 目录`,
+      `${commandName} <路径> find — 按完整路径查找文件或目录`,
+      `${commandName} <目录> grep <关键词> — 在目录内搜索文件`,
+      `${commandName} <路径> df — 查看文件或目录占用空间`,
+      `${commandName} <路径> detail — 查看文件数量、大小、分享和原始路径`,
+      `${commandName} <路径> meta — 查看文件元数据键值`,
+      `${commandName} <路径> original — 查看文件的原始来源路径`,
+      `${commandName} <父目录> mkdir <文件夹名> — 创建文件夹`,
+      `${commandName} <路径> rename <新名称> — 重命名文件或文件夹`,
+      `${commandName} <源路径> mv <目标目录> — 移动文件或文件夹`,
+      `${commandName} <源路径> cp <目标目录> — 复制文件或文件夹`,
+      `${commandName} <路径> rm confirm — 删除文件或文件夹`,
+      `${commandName} <文件路径> dl — 下载文件并替换当前 Telegram 命令消息`,
+      `${commandName} <目标目录> up — 回复 Telegram 文件并通过 WebDAV 上传`,
+      `${commandName} <目标目录> rup — 回复 Telegram 文件并通过官方远程上传协议上传`,
       `${commandName} mount list — 列出挂载点`,
       `${commandName} mount can-add — 检查挂载点配额`,
       `${commandName} mount add 挂载点 源目录 — 添加挂载点`,
@@ -241,6 +162,8 @@ const helpSections: HelpSection[] = [
     ]
   },
   {
+    key: 'transfer',
+    aliases: ['task', 'tasks'],
     title: '传输任务',
     lines: [
       `${commandName} transfer status — 查看所有传输任务统计`,
@@ -254,6 +177,7 @@ const helpSections: HelpSection[] = [
       `${commandName} transfer pause 任务键 — 暂停指定任务`,
       `${commandName} transfer resume 任务键 — 恢复指定任务`,
       `${commandName} transfer cancel 任务键 — 取消指定任务`,
+      `${commandName} transfer remote <上传编号> <pause|resume|cancel> — 控制官方远程上传`,
       `${commandName} transfer copy pause 任务键 — 暂停复制任务`,
       `${commandName} transfer copy resume 任务键 — 恢复复制任务`,
       `${commandName} transfer copy cancel 源路径 目标路径 — 取消复制任务`,
@@ -267,6 +191,8 @@ const helpSections: HelpSection[] = [
     ]
   },
   {
+    key: 'api',
+    aliases: ['cloud', 'cloud-api'],
     title: 'Cloud API',
     lines: [
       `${commandName} api list — 列出全部 Cloud API 配置`,
@@ -305,6 +231,8 @@ const helpSections: HelpSection[] = [
     ]
   },
   {
+    key: 'backup',
+    aliases: ['backups'],
     title: '备份',
     lines: [
       `${commandName} backup list — 列出全部备份任务`,
@@ -326,22 +254,22 @@ const helpSections: HelpSection[] = [
     ]
   },
   {
-    title: '远程上传与离线任务',
+    key: 'remote',
+    aliases: ['offline'],
+    title: '离线下载',
     lines: [
-      `${commandName} remote add 地址 目标路径 — 创建离线下载任务`,
-      `${commandName} remote list [目标路径] — 查看指定目录的离线下载任务`,
-      `${commandName} remote list-all 云盘名称 用户名 页码 — 查看全部离线任务`,
-      `${commandName} remote remove 云盘名称 用户名 confirm — 删除离线任务`,
-      `${commandName} remote upload 目标目录 — 回复 Telegram 文件并使用官方远程上传协议`,
-      `${commandName} remote control pause 上传编号 — 暂停官方远程上传`,
-      `${commandName} remote control resume 上传编号 — 恢复官方远程上传`,
-      `${commandName} remote control cancel 上传编号 — 取消官方远程上传`,
-      `${commandName} remote quota 云盘名称 账户编号 路径 — 查询离线配额`,
-      `${commandName} remote clear 云盘名称 账户编号 状态 — 清理离线文件`,
-      `${commandName} remote restart 云盘名称 账户编号 信息哈希 地址 父目录编号 — 重启离线任务`
+      `${commandName} remote add <目录> <磁力链接> — 添加离线下载任务`,
+      `${commandName} remote list <目录> — 查看指定目录的离线任务`,
+      `${commandName} remote list-all <目录> [页码] — 分页查看该云盘的全部离线任务`,
+      `${commandName} remote remove <目录> <信息哈希> confirm — 删除指定离线任务`,
+      `${commandName} remote quota <目录> — 查询该目录所属云盘的离线配额`,
+      `${commandName} remote clear <目录> <状态> [delete] confirm — 按状态清理离线任务`,
+      `${commandName} remote restart <目录> <信息哈希> — 重启指定离线任务`
     ]
   },
   {
+    key: 'system',
+    aliases: ['sys', 'dav'],
     title: '系统、缓存与 WebDAV',
     lines: [
       `${commandName} system runtime — 查看运行信息和版本`,
@@ -385,12 +313,23 @@ const helpSections: HelpSection[] = [
   }
 ]
 
-const buildHelpBody = (): string => helpSections.map((section) => `<blockquote expandable>\n${buildHelpSection(section)}\n</blockquote>`).join('\n<b></b>\n')
-
-const buildHelpDescription = (collapse: boolean): string => {
-  if (!collapse) return helpSections.map(buildHelpSection).join('\n\n')
-  return buildHelpBody()
+const findHelpSection = (topic: string): HelpSection | undefined => {
+  const normalized = topic.trim().toLowerCase()
+  return helpSections.find((section) => section.key === normalized || section.aliases.includes(normalized))
 }
+
+const buildHelpIndex = (): string =>
+  [
+    '<b>☁️ CloudDrive2 帮助已分区</b>',
+    '发送下面的命令查看对应帮助：',
+    '',
+    ...helpSections.map((section) => `<code>${htmlEscape(`${commandName} h ${section.key}`)}</code> — ${htmlEscape(section.title)}`),
+    '',
+    `<b>常用格式：</b> <code>${htmlEscape(`${commandName} <路径> <操作> [参数]`)}</code>`,
+    `<b>离线格式：</b> <code>${htmlEscape(`${commandName} remote <操作> <目录> [参数]`)}</code>`
+  ].join('\n')
+
+const buildHelpSectionItems = (section: HelpSection): string[] => [`<b>☁️ ${htmlEscape(section.title)}</b>`, `<b>返回目录：</b> <code>${htmlEscape(`${commandName} h`)}</code>`, '', ...section.lines.flatMap((line) => [formatHelpLine(line), ''])]
 
 const htmlText = (text: string): string => html(text)
 
@@ -420,6 +359,19 @@ const normalizePath = (value: string): string => {
   if (!input) return '/'
   if (!input.startsWith('/')) throw new Error('CD2 路径必须以 / 开头')
   return input.length > 1 ? input.replace(/\/+$/, '') : '/'
+}
+
+const PATH_ACTIONS = new Set(['ls', 'find', 'grep', 'df', 'detail', 'meta', 'original', 'mkdir', 'rename', 'mv', 'cp', 'rm', 'dl', 'up', 'rup'])
+
+const parsePathCommand = (args: string[]): { path: string; action: string; values: string[] } | undefined => {
+  if (!args[0]?.startsWith('/')) return undefined
+  const actionIndex = args.findIndex((value, index) => index > 0 && PATH_ACTIONS.has(value.toLowerCase()))
+  if (actionIndex < 0) return undefined
+  return {
+    path: normalizePath(args.slice(0, actionIndex).join(' ')),
+    action: args[actionIndex].toLowerCase(),
+    values: args.slice(actionIndex + 1)
+  }
 }
 
 type WebDavResponse = { status: number; headers: Record<string, string | string[] | undefined>; body: Buffer }
@@ -613,6 +565,50 @@ const createGrpcError = (method: string, status: string, message: string): Error
   const statusName = GRPC_STATUS_NAMES[status] || 'UNKNOWN'
   const details = message.trim() || (status === '13' ? 'CloudDrive2 服务端发生内部错误，请在网页端使用相同参数重试' : '')
   return new Error(`CD2 gRPC ${method} 失败：${statusName} (${status})${details ? `：${details}` : ''}`)
+}
+
+type OfflineSourceDetails = { name: string; infoHash: string }
+
+const offlineSourceDetails = (source: string): OfflineSourceDetails => {
+  const value = source.trim()
+  if (!/^magnet:/i.test(value)) {
+    try {
+      const parsed = new URL(value)
+      return { name: decodeURIComponent(parsed.pathname.split('/').filter(Boolean).at(-1) || ''), infoHash: '' }
+    } catch {
+      return { name: '', infoHash: '' }
+    }
+  }
+  try {
+    const parsed = new URL(value)
+    const exactTopic = parsed.searchParams.getAll('xt').find((item) => /^urn:(?:btih|btmh):/i.test(item)) || ''
+    return {
+      name: parsed.searchParams.get('dn')?.trim() || '',
+      infoHash: exactTopic.replace(/^urn:(?:btih|btmh):/i, '').trim()
+    }
+  } catch {
+    const infoHash = value.match(/[?&]xt=urn:(?:btih|btmh):([^&\s]+)/i)?.[1] || ''
+    return { name: '', infoHash }
+  }
+}
+
+const pathBaseName = (value: string): string => {
+  const name = value.split('/').filter(Boolean).at(-1) || ''
+  try {
+    return decodeURIComponent(name)
+  } catch {
+    return name
+  }
+}
+
+const shortHash = (value: string): string => (value.length > 20 ? `${value.slice(0, 10)}…${value.slice(-8)}` : value)
+
+const OFFLINE_STATUS_LABELS: Record<number, string> = {
+  0: '等待中',
+  1: '下载中',
+  2: '已完成',
+  3: '失败',
+  4: '未知'
 }
 
 const parseProxySetting = (value: string): Record<string, unknown> => {
@@ -1755,7 +1751,7 @@ const decodeOfflineFile = (buffer: Buffer): RpcResponse => {
     fileId: text(values(fields, 6).at(0)),
     addTime: integer(values(fields, 7).at(0)),
     parentId: text(values(fields, 8).at(0)),
-    percentDone: Number(values(fields, 9).at(0) || 0),
+    percentDone: doubleValue(values(fields, 9).at(0)),
     peers: Number(values(fields, 10).at(0) || 0)
   }
 }
@@ -2356,7 +2352,7 @@ class Cd2Client {
 }
 
 class Cd2Plugin extends Plugin {
-  description = async (): Promise<string> => buildHelpDescription((await this.getConfig()).collapse)
+  description = (): string => buildHelpIndex()
   private dbPromise?: Promise<Db>
   private client?: Cd2Client
 
@@ -2374,7 +2370,6 @@ class Cd2Plugin extends Plugin {
         token: '',
         accountUsername: '',
         accountPassword: '',
-        defaultPath: '/',
         webdavUrl: `${DEFAULT_ENDPOINT}/dav`,
         webdavUsername: '',
         webdavPassword: '',
@@ -2388,7 +2383,7 @@ class Cd2Plugin extends Plugin {
   private async getConfig(): Promise<Cd2Config> {
     const db = await this.getDb()
     await db.read()
-    const defaults: Cd2Config = { endpoint: DEFAULT_ENDPOINT, token: '', accountUsername: '', accountPassword: '', defaultPath: '/', webdavUrl: `${DEFAULT_ENDPOINT}/dav`, webdavUsername: '', webdavPassword: '', webdavRoot: '/', collapse: true }
+    const defaults: Cd2Config = { endpoint: DEFAULT_ENDPOINT, token: '', accountUsername: '', accountPassword: '', webdavUrl: `${DEFAULT_ENDPOINT}/dav`, webdavUsername: '', webdavPassword: '', webdavRoot: '/', collapse: true }
     const config = { ...defaults, ...db.data }
     if (JSON.stringify(config) !== JSON.stringify(db.data)) {
       db.data = config
@@ -2409,6 +2404,23 @@ class Cd2Plugin extends Plugin {
   private getClient(): Cd2Client {
     if (!this.client) this.client = new Cd2Client(() => this.getConfig())
     return this.client
+  }
+
+  private async handleHelp(msg: MessageContext, args: string[]): Promise<void> {
+    const topic = args[0]?.trim()
+    if (!topic) {
+      await msg.edit({ text: htmlText(buildHelpIndex()) })
+      return
+    }
+    const section = findHelpSection(topic)
+    if (!section) {
+      throw new Error(`未知帮助分区：${topic}。可用分区：${helpSections.map((item) => item.key).join('、')}`)
+    }
+    const config = await this.getConfig()
+    const chunks = chunkText(buildHelpSectionItems(section), config.collapse ? MAX_MESSAGE_LENGTH - 64 : MAX_MESSAGE_LENGTH)
+    const render = (chunk: string): string => (config.collapse ? `<blockquote expandable>\n${chunk}\n</blockquote>` : chunk)
+    await msg.edit({ text: htmlText(render(chunks[0])) })
+    for (const chunk of chunks.slice(1)) await msg.replyText(htmlText(render(chunk)))
   }
 
   private async handleCollapse(msg: MessageContext, args: string[]): Promise<void> {
@@ -2435,10 +2447,9 @@ class Cd2Plugin extends Plugin {
             `<code>${commandName} conf endpoint 地址</code> — 设置 CloudDrive2 服务地址`,
             `<code>${commandName} conf account 用户名 密码</code> — 保存 CloudDrive2 账户用户名和密码`,
             `<code>${commandName} conf token API令牌</code> — 保存 API Token，后续请求使用该 Token`,
-            `<code>${commandName} conf path 默认路径</code> — 设置文件操作和任务使用的默认路径`,
             `<code>${commandName} conf dav-url WebDAV地址</code> — 设置 WebDAV 服务地址`,
             `<code>${commandName} conf dav-user 用户名 密码</code> — 设置 WebDAV 用户名和密码`,
-            `<code>${commandName} conf dav-root 上传根目录</code> — 设置 Telegram 文件上传到 WebDAV 的根目录`,
+            `<code>${commandName} conf dav-root 账户根目录</code> — 设置 WebDAV 账户默认根目录`,
             '',
             '敏感参数不会在回复、帮助或日志中显示。详细参数请按上面的命令名称执行。'
           ].join('\n')
@@ -2457,11 +2468,10 @@ class Cd2Plugin extends Plugin {
             `<b>Token：</b> <code>${htmlEscape(maskToken(config.token))}</code>`,
             `<b>CloudDrive 账户：</b> <code>${htmlEscape(config.accountUsername || '未设置')}</code>`,
             `<b>CloudDrive 密码：</b> <code>${htmlEscape(maskToken(config.accountPassword))}</code>`,
-            `<b>默认路径：</b> <code>${htmlEscape(config.defaultPath)}</code>`,
             `<b>WebDAV：</b> <code>${htmlEscape(config.webdavUrl || '未设置')}</code>`,
             `<b>WebDAV 用户：</b> <code>${htmlEscape(config.webdavUsername || (config.accountUsername ? `${config.accountUsername}（CloudDrive 账户）` : '未设置'))}</code>`,
             `<b>WebDAV 密码：</b> <code>${htmlEscape(maskToken(config.webdavPassword))}</code>`,
-            `<b>WebDAV 上传根目录：</b> <code>${htmlEscape(config.webdavRoot)}</code>`,
+            `<b>WebDAV 账户根目录：</b> <code>${htmlEscape(config.webdavRoot)}</code>`,
             `<b>Telegram 原生折叠：</b> ${config.collapse ? '开启' : '关闭'}`
           ].join('\n')
         )
@@ -2488,13 +2498,6 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: `✅ CloudDrive 账户已保存：<code>${htmlEscape(args[1])}</code>\n请继续使用 ${commandName} login 完成登录` })
       return
     }
-    if (action === 'path') {
-      if (!args[1]) throw new Error(`用法：${commandName} conf path /目录`)
-      const defaultPath = normalizePath(args[1])
-      await this.updateConfig({ defaultPath })
-      await msg.edit({ text: htmlText(`✅ 默认路径已设置为 <code>${htmlEscape(defaultPath)}</code>`) })
-      return
-    }
     if (action === 'dav-url') {
       if (!args[1]) throw new Error(`用法：${commandName} conf dav-url http://host:19798/dav`)
       const webdavUrl = normalizeWebDavUrl(args[1])
@@ -2512,7 +2515,7 @@ class Cd2Plugin extends Plugin {
       if (!args[1]) throw new Error(`用法：${commandName} conf dav-root /目录`)
       const webdavRoot = normalizePath(args[1])
       await this.updateConfig({ webdavRoot })
-      await msg.edit({ text: htmlText(`✅ WebDAV 上传根目录已设置为 <code>${htmlEscape(webdavRoot)}</code>`) })
+      await msg.edit({ text: htmlText(`✅ WebDAV 账户默认根目录已设置为 <code>${htmlEscape(webdavRoot)}</code>`) })
       return
     }
     throw new Error(`未知配置项，请使用 ${commandName} conf 查看配置命令`)
@@ -2803,9 +2806,8 @@ class Cd2Plugin extends Plugin {
     })
   }
 
-  private async handleList(msg: MessageContext, inputPath?: string): Promise<void> {
-    const config = await this.getConfig()
-    const targetPath = normalizePath(inputPath || config.defaultPath)
+  private async handleList(msg: MessageContext, inputPath: string): Promise<void> {
+    const targetPath = normalizePath(inputPath)
     await msg.edit({ text: `🔄 正在读取 <code>${htmlEscape(targetPath)}</code>…` })
     const replies = await this.getClient().stream('GetSubFiles', { path: targetPath })
     const files = replies.flatMap((reply) => (reply.subFiles || []) as Cd2File[]).slice(0, MAX_ITEMS)
@@ -2814,14 +2816,15 @@ class Cd2Plugin extends Plugin {
       return
     }
     const lines = [`<b>📂 ${htmlEscape(targetPath)}</b>`, '', ...files.map(formatFile)]
-    await msg.edit({ text: htmlText(lines.join('\n')) })
+    const chunks = chunkText(lines)
+    await msg.edit({ text: htmlText(chunks[0]) })
+    for (const chunk of chunks.slice(1)) await msg.replyText(htmlText(chunk))
   }
 
-  private async handleSearch(msg: MessageContext, args: string[]): Promise<void> {
-    const keyword = args[0]?.trim()
-    if (!keyword) throw new Error(`用法：${commandName} grep 关键词 [路径]`)
-    const config = await this.getConfig()
-    const targetPath = normalizePath(args[1] || config.defaultPath)
+  private async handleSearch(msg: MessageContext, inputPath: string, inputKeyword: string): Promise<void> {
+    const keyword = inputKeyword.trim()
+    if (!keyword) throw new Error(`用法：${commandName} <目录> grep <关键词>`)
+    const targetPath = normalizePath(inputPath)
     await msg.edit({ text: '🔄 正在搜索 CloudDrive2…' })
     const replies = await this.getClient().stream('GetSearchResults', { path: targetPath, searchFor: keyword, fuzzyMatch: true })
     const files = replies.flatMap((reply) => (reply.subFiles || []) as Cd2File[]).slice(0, MAX_ITEMS)
@@ -2851,10 +2854,8 @@ class Cd2Plugin extends Plugin {
     })
   }
 
-  private async handleFileInfo(msg: MessageContext, args: string[]): Promise<void> {
-    const action = args[0]?.toLowerCase()
-    const targetPath = normalizePath(args.slice(1).join(' '))
-    if (!action || !args[1]) throw new Error(usageText(`${commandName} file detail /路径`, `${commandName} file meta /路径`, `${commandName} file original /路径`))
+  private async handleFileInfo(msg: MessageContext, inputPath: string, action: string): Promise<void> {
+    const targetPath = normalizePath(inputPath)
     if (action === 'detail') {
       const result = await this.getClient().unary('GetFileDetailProperties', { path: targetPath, forceRefresh: false })
       await msg.edit({
@@ -2884,12 +2885,11 @@ class Cd2Plugin extends Plugin {
       await msg.edit({ text: htmlText(`<b>原始路径：</b> <code>${htmlEscape(result.result || '')}</code>`) })
       return
     }
-    throw new Error(usageText(`${commandName} file detail /路径`, `${commandName} file meta /路径`, `${commandName} file original /路径`))
+    throw new Error(usageText(`${commandName} <路径> detail`, `${commandName} <路径> meta`, `${commandName} <路径> original`))
   }
 
-  private async handleSpace(msg: MessageContext, inputPath?: string): Promise<void> {
-    const config = await this.getConfig()
-    const targetPath = normalizePath(inputPath || config.defaultPath)
+  private async handleSpace(msg: MessageContext, inputPath: string): Promise<void> {
+    const targetPath = normalizePath(inputPath)
     const info = await this.getClient().unary('GetSpaceInfo', { path: targetPath })
     await msg.edit({ text: htmlText(['<b>💾 CloudDrive2 空间</b>', `<b>路径：</b> <code>${htmlEscape(targetPath)}</code>`, `<b>总空间：</b> ${formatBytes(info.totalSpace)}`, `<b>已使用：</b> ${formatBytes(info.usedSpace)}`, `<b>可用：</b> ${formatBytes(info.freeSpace)}`].join('\n')) })
   }
@@ -3022,6 +3022,14 @@ class Cd2Plugin extends Plugin {
       await msg.edit({
         text: htmlText([`<b>⬆️ 上传任务（筛选 ${result.totalCountFiltered ?? result.totalCount ?? 0}/总计 ${result.totalCount || 0}）</b>`, `<b>速度：</b> ${formatBytes(result.globalBytesPerSecond)}/s · ${formatBytes(result.finishedBytes)}/${formatBytes(result.totalBytes)}`, '', ...lines].join('\n'))
       })
+      return
+    }
+    if (action === 'remote') {
+      const uploadId = args[1]
+      const operation = args[2]?.toLowerCase()
+      if (!uploadId || !['pause', 'resume', 'cancel'].includes(operation || '')) throw new Error(`用法：${commandName} transfer remote <上传编号> <pause|resume|cancel>`)
+      await this.getClient().unary('RemoteUploadControl', { uploadId, action: operation })
+      await msg.edit({ text: `✅ 远程上传已${operation === 'pause' ? '暂停' : operation === 'resume' ? '恢复' : '取消'}` })
       return
     }
     if (action === 'copies') {
@@ -3423,133 +3431,245 @@ class Cd2Plugin extends Plugin {
     )
   }
 
+  private async handleRemoteUpload(msg: MessageContext, inputPath: string): Promise<void> {
+    const replied = await safeGetReplyMessage(msg)
+    const media = replied?.media as { type?: string; fileName?: string; mimeType?: string } | undefined
+    if (!replied || !media) throw new Error(`请回复 Telegram 文件后使用 ${commandName} <目标目录> rup`)
+    const telegram = (await getGlobalClient()) as { downloadAsBuffer: (media: unknown) => Promise<Buffer> }
+    await msg.edit({ text: '🔄 正在读取 Telegram 文件…' })
+    const data = Buffer.from(await telegram.downloadAsBuffer(media))
+    if (data.length > 128 * 1024 * 1024) throw new Error('单个远程上传文件不能超过 128 MiB')
+    const fileName = media.fileName || `telegram-${replied.id || Date.now()}.${getMediaExtension(media)}`
+    const directory = normalizePath(inputPath)
+    const filePath = `${directory === '/' ? '' : directory}/${fileName}`
+    await msg.edit({ text: htmlText(`🔄 正在建立官方远程上传通道：<code>${htmlEscape(filePath)}</code>…`) })
+    const client = this.getClient()
+    const started = await client.unary('StartRemoteUpload', { filePath, fileSize: data.length, knownHashes: {}, clientCanCalculateHashes: true })
+    const uploadId = String(started.uploadId || '')
+    if (!uploadId) throw new Error('CloudDrive2 未返回远程上传 ID')
+    await msg.edit({ text: htmlText(`🔄 官方远程上传已建立：<code>${htmlEscape(fileName)}</code>\n<b>上传编号：</b> <code>${htmlEscape(uploadId)}</code>`) })
+    let finalStatus = -1
+    let finalError = ''
+    await client.consumeServerStream('RemoteUploadChannel', { deviceId: `telebox-${randomUUID()}` }, async (event) => {
+      if (event.uploadId && event.uploadId !== uploadId) return true
+      if (event.type === 'read') {
+        const offset = Number(event.offset || 0)
+        const requested = Number(event.length || 0)
+        const end = Math.min(data.length, offset + requested)
+        const chunk = data.subarray(offset, end)
+        const result = await client.unary('RemoteReadData', { uploadId, offset, length: chunk.length, lazyRead: Boolean(event.lazyRead), data: chunk, isLastChunk: end >= data.length })
+        if (result.success === false) throw new Error(result.errorMessage || '远程上传数据发送失败')
+        const percent = data.length ? Math.min(100, Math.floor((end / data.length) * 100)) : 100
+        await msg.edit({ text: htmlText(`🔄 正在远程上传 <code>${htmlEscape(fileName)}</code>：${percent}%\n<b>上传编号：</b> <code>${htmlEscape(uploadId)}</code>`) })
+        return true
+      }
+      if (event.type === 'hash') {
+        const hashType = Number(event.hashType || 0)
+        const algorithm = hashType === 1 ? 'md5' : 'sha1'
+        const hashValue = createHash(algorithm).update(data).digest('hex')
+        const blockSize = Number(event.blockSize || 0)
+        const blockHashes =
+          hashType === 1 && blockSize > 0
+            ? Array.from({ length: Math.ceil(data.length / blockSize) }, (_, index) =>
+                createHash('md5')
+                  .update(data.subarray(index * blockSize, Math.min(data.length, (index + 1) * blockSize)))
+                  .digest('hex')
+              )
+            : []
+        await client.unary('RemoteHashProgress', { uploadId, bytesHashed: data.length, totalBytes: data.length, hashType, hashValue, blockHashes })
+        return true
+      }
+      if (event.type === 'status') {
+        finalStatus = Number(event.status || 0)
+        finalError = String(event.errorMessage || '')
+        if ([2, 5, 6, 8, 9, 10].includes(finalStatus)) return false
+      }
+      return true
+    })
+    if ([2, 9, 10].includes(finalStatus)) throw new Error(finalError || `远程上传失败，状态 ${finalStatus}`)
+    await msg.edit({ text: htmlText(`✅ 远程上传完成：<code>${htmlEscape(filePath)}</code>`) })
+  }
+
+  private async resolveOfflineCloud(inputPath: string): Promise<{ cloudName: string; cloudAccountId: string; path: string }> {
+    const targetPath = normalizePath(inputPath)
+    const result = await this.getClient().unary('GetAllCloudApis')
+    const clouds = ((result.apis || []) as RpcResponse[])
+      .map((cloud) => {
+        const rawPath = String(cloud.path || `/${cloud.name || ''}`)
+        try {
+          return { cloud, path: normalizePath(rawPath) }
+        } catch {
+          return undefined
+        }
+      })
+      .filter((item): item is { cloud: RpcResponse; path: string } => Boolean(item))
+      .filter((item) => targetPath === item.path || targetPath.startsWith(`${item.path}/`))
+      .sort((left, right) => right.path.length - left.path.length)
+    const matched = clouds[0]?.cloud
+    const cloudName = String(matched?.name || '')
+    const cloudAccountId = String(matched?.userName || '')
+    if (!cloudName || !cloudAccountId) throw new Error(`无法从路径 ${targetPath} 识别所属云盘账户`)
+    return { cloudName, cloudAccountId, path: targetPath }
+  }
+
+  private async getOfflineFiles(inputPath: string, forceRefresh = false): Promise<RpcResponse[]> {
+    const targetPath = normalizePath(inputPath)
+    const result = await this.getClient().unary('ListOfflineFilesByPath', { path: targetPath, forceRefresh })
+    return (result.offlineFiles || []) as RpcResponse[]
+  }
+
+  private findOfflineTask(files: RpcResponse[], inputHash: string): RpcResponse {
+    const requested = inputHash.trim().toLowerCase()
+    const exact = files.find((file) => String(file.infoHash || '').toLowerCase() === requested)
+    if (exact) return exact
+    const matches = files.filter((file) =>
+      String(file.infoHash || '')
+        .toLowerCase()
+        .startsWith(requested)
+    )
+    if (matches.length === 1) return matches[0]
+    if (matches.length > 1) throw new Error('哈希前缀匹配到多个任务，请使用完整 infoHash')
+    throw new Error(`没有找到离线任务：${inputHash}`)
+  }
+
+  private async showOfflineFiles(msg: MessageContext, title: string, targetPath: string, files: RpcResponse[]): Promise<void> {
+    const rows = files.length
+      ? files.slice(0, MAX_ITEMS).map((file, index) => {
+          const status = OFFLINE_STATUS_LABELS[Number(file.status ?? 4)] || '未知'
+          const progress = Math.max(0, Math.min(100, Number(file.percentDone || 0)))
+          return `${index + 1}. <b>${htmlEscape(String(file.name || '等待云盘解析'))}</b>\n   状态：${htmlEscape(status)} · ${Number.isFinite(progress) ? progress.toFixed(progress % 1 ? 1 : 0) : '0'}%\n   哈希：<code>${htmlEscape(String(file.infoHash || '无'))}</code>`
+        })
+      : ['没有离线下载任务']
+    const chunks = chunkText([`<b>🌐 ${htmlEscape(title)}</b>`, `<b>目录：</b> <code>${htmlEscape(targetPath)}</code>`, '', ...rows])
+    await msg.edit({ text: htmlText(chunks[0]) })
+    for (const chunk of chunks.slice(1)) await msg.replyText(htmlText(chunk))
+  }
+
   private async handleRemote(msg: MessageContext, args: string[]): Promise<void> {
-    const action = args[0]?.toLowerCase() || 'list'
+    const action = args[0]?.toLowerCase()
+    if (!action) throw new Error(`用法：${commandName} remote <操作> <目录> [参数]；详情：${commandName} h remote`)
+
     if (action === 'add') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} remote add URL 目标目录`)
-      const urls = args[1].trim()
-      if (/^magnet:/i.test(urls) && !/[?&]xt=urn:(?:btih|btmh):[^&\s]+/i.test(urls)) throw new Error('磁力链接不完整：缺少 xt=urn:btih 或 xt=urn:btmh 参数')
-      const toFolder = normalizePath(args.slice(2).join(' '))
+      if (args.length < 3) throw new Error(`用法：${commandName} remote add <目录> <磁力链接>`)
+      const sourceIndex = args.findIndex((value, index) => index > 1 && /^magnet:/i.test(value))
+      if (sourceIndex < 2) throw new Error(`用法：${commandName} remote add <目录> <磁力链接>；目录必须放在磁力链接前面`)
+      const toFolder = normalizePath(args.slice(1, sourceIndex).join(' '))
+      const source = args.slice(sourceIndex).join(' ').trim()
+      const sourceDetails = offlineSourceDetails(source)
+      if (!sourceDetails.infoHash) throw new Error('磁力链接不完整：缺少 xt=urn:btih 或 xt=urn:btmh 参数')
+      const pendingName = sourceDetails.name || '等待云盘解析'
+      await msg.edit({
+        text: htmlText(['⏳ <b>正在添加离线下载…</b>', '', `<b>名称：</b> <code>${htmlEscape(pendingName)}</code>`, `<b>目录：</b> <code>${htmlEscape(toFolder)}</code>`].join('\n'))
+      })
       let result: RpcResponse
       try {
-        result = await this.getClient().unary('AddOfflineFiles', { urls, toFolder })
+        result = await this.getClient().unary('AddOfflineFiles', { urls: source, toFolder, checkFolderAfterSecs: 3 })
+        if (result.success === false) throw new Error(result.errorMessage || '离线下载任务提交失败')
       } catch (error) {
-        throw new Error(`${errorMessage(error)}；目标目录：${toFolder}`)
+        await msg.edit({
+          text: htmlText(['❌ <b>离线下载添加失败</b>', '', `<b>名称：</b> <code>${htmlEscape(pendingName)}</code>`, `<b>目录：</b> <code>${htmlEscape(toFolder)}</code>`, `<b>原因：</b> ${htmlEscape(errorMessage(error))}`].join('\n'))
+        })
+        return
       }
-      if (result.success === false) throw new Error(result.errorMessage || '离线下载任务提交失败')
-      await msg.edit({ text: htmlText(['✅ <b>离线下载任务已提交</b>', ...(result.resultFilePaths || []).map((item: string) => `<code>${htmlEscape(item)}</code>`)].join('\n')) })
-      return
-    }
-    if (action === 'upload') {
-      const replied = await safeGetReplyMessage(msg)
-      const media = replied?.media as { type?: string; fileName?: string; mimeType?: string } | undefined
-      if (!replied || !media) throw new Error(`请回复 Telegram 文件后使用 ${commandName} remote upload /目标目录`)
-      const telegram = (await getGlobalClient()) as { downloadAsBuffer: (media: unknown) => Promise<Buffer> }
-      await msg.edit({ text: '🔄 正在读取 Telegram 文件…' })
-      const data = Buffer.from(await telegram.downloadAsBuffer(media))
-      if (data.length > 128 * 1024 * 1024) throw new Error('单个远程上传文件不能超过 128 MiB')
-      const fileName = media.fileName || `telegram-${replied.id || Date.now()}.${getMediaExtension(media)}`
-      const directory = normalizePath(args[1] || '/')
-      const filePath = `${directory === '/' ? '' : directory}/${fileName}`
-      await msg.edit({ text: htmlText(`🔄 正在建立官方远程上传通道：<code>${htmlEscape(filePath)}</code>…`) })
-      const client = this.getClient()
-      const started = await client.unary('StartRemoteUpload', { filePath, fileSize: data.length, knownHashes: {}, clientCanCalculateHashes: true })
-      const uploadId = String(started.uploadId || '')
-      if (!uploadId) throw new Error('CloudDrive2 未返回远程上传 ID')
-      let finalStatus = -1
-      let finalError = ''
-      await client.consumeServerStream('RemoteUploadChannel', { deviceId: `telebox-${randomUUID()}` }, async (event) => {
-        if (event.uploadId && event.uploadId !== uploadId) return true
-        if (event.type === 'read') {
-          const offset = Number(event.offset || 0)
-          const requested = Number(event.length || 0)
-          const end = Math.min(data.length, offset + requested)
-          const chunk = data.subarray(offset, end)
-          const result = await client.unary('RemoteReadData', { uploadId, offset, length: chunk.length, lazyRead: Boolean(event.lazyRead), data: chunk, isLastChunk: end >= data.length })
-          if (result.success === false) throw new Error(result.errorMessage || '远程上传数据发送失败')
-          const percent = data.length ? Math.min(100, Math.floor((end / data.length) * 100)) : 100
-          await msg.edit({ text: htmlText(`🔄 正在远程上传 <code>${htmlEscape(fileName)}</code>：${percent}%`) })
-          return true
+
+      const resultPaths = Array.isArray(result.resultFilePaths) ? result.resultFilePaths.map((item) => String(item)).filter(Boolean) : []
+      let task: RpcResponse | undefined
+      if (sourceDetails.infoHash) {
+        try {
+          const files = await this.getOfflineFiles(toFolder, true)
+          task = files.find((file) => String(file.infoHash || '').toLowerCase() === sourceDetails.infoHash.toLowerCase())
+        } catch {
+          // The add succeeded; a delayed or unsupported refresh must not turn it into a failure.
         }
-        if (event.type === 'hash') {
-          const hashType = Number(event.hashType || 0)
-          const algorithm = hashType === 1 ? 'md5' : 'sha1'
-          const hashValue = createHash(algorithm).update(data).digest('hex')
-          const blockSize = Number(event.blockSize || 0)
-          const blockHashes =
-            hashType === 1 && blockSize > 0
-              ? Array.from({ length: Math.ceil(data.length / blockSize) }, (_, index) =>
-                  createHash('md5')
-                    .update(data.subarray(index * blockSize, Math.min(data.length, (index + 1) * blockSize)))
-                    .digest('hex')
-                )
-              : []
-          await client.unary('RemoteHashProgress', { uploadId, bytesHashed: data.length, totalBytes: data.length, hashType, hashValue, blockHashes })
-          return true
-        }
-        if (event.type === 'status') {
-          finalStatus = Number(event.status || 0)
-          finalError = String(event.errorMessage || '')
-          if ([2, 5, 6, 8, 9, 10].includes(finalStatus)) return false
-        }
-        return true
+      }
+      const infoHash = String(task?.infoHash || sourceDetails.infoHash || '')
+      const name = String(task?.name || pathBaseName(resultPaths[0] || '') || sourceDetails.name || '等待云盘解析')
+      const status = task ? OFFLINE_STATUS_LABELS[Number(task.status ?? 0)] || '已提交' : '已提交，等待云盘处理'
+      await msg.edit({
+        text: htmlText(
+          [
+            '✅ <b>离线下载添加成功</b>',
+            '',
+            `<b>名称：</b> <code>${htmlEscape(name)}</code>`,
+            `<b>保存目录：</b> <code>${htmlEscape(toFolder)}</code>`,
+            `<b>状态：</b> ${htmlEscape(status)}`,
+            ...(infoHash ? [`<b>哈希：</b> <code>${htmlEscape(infoHash)}</code>`] : []),
+            ...(resultPaths[0] ? [`<b>结果路径：</b> <code>${htmlEscape(resultPaths[0])}</code>`] : [])
+          ].join('\n')
+        )
       })
-      if ([2, 9, 10].includes(finalStatus)) throw new Error(finalError || `远程上传失败，状态 ${finalStatus}`)
-      await msg.edit({ text: htmlText(`✅ 远程上传完成：<code>${htmlEscape(filePath)}</code>`) })
       return
     }
-    if (action === 'control') {
-      const operation = args[1]?.toLowerCase()
-      if (!['pause', 'resume', 'cancel'].includes(operation || '') || !args[2]) throw new Error(usageText(`${commandName} remote control pause UPLOAD_ID`, `${commandName} remote control resume UPLOAD_ID`, `${commandName} remote control cancel UPLOAD_ID`))
-      await this.getClient().unary('RemoteUploadControl', { uploadId: args[2], action: operation })
-      await msg.edit({ text: `✅ 远程上传已${operation === 'pause' ? '暂停' : operation === 'resume' ? '恢复' : '取消'}` })
-      return
-    }
-    if (action === 'quota') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} remote quota CLOUD_NAME CLOUD_ACCOUNT_ID [PATH]`)
-      const result = await this.getClient().unary('GetOfflineQuotaInfo', { cloudName: args[1], cloudAccountId: args[2], path: args[3] })
-      await msg.edit({ text: htmlText(['<b>🌐 离线任务配额</b>', `<b>总数：</b> ${result.total || 0}`, `<b>已用：</b> ${result.used || 0}`, `<b>剩余：</b> ${result.left || 0}`].join('\n')) })
-      return
-    }
-    if (action === 'clear') {
-      if (!args[1] || !args[2] || !args[3]) throw new Error(`用法：${commandName} remote clear CLOUD_NAME CLOUD_ACCOUNT_ID 状态 [delete] [PATH]`)
-      const filter = { all: 0, finished: 1, error: 2, downloading: 3 }[args[3].toLowerCase()]
-      if (filter === undefined) throw new Error('筛选只支持 all、finished、error、downloading')
-      await this.getClient().unary('ClearOfflineFiles', { cloudName: args[1], cloudAccountId: args[2], filter, deleteFiles: args[4]?.toLowerCase() === 'delete', path: args[5] })
-      await msg.edit({ text: '✅ 离线任务已清理' })
-      return
-    }
-    if (action === 'restart') {
-      if (!args[1] || !args[2] || !args[3] || !args[4] || !args[5]) throw new Error(`用法：${commandName} remote restart CLOUD_NAME CLOUD_ACCOUNT_ID INFO_HASH URL PARENT_ID [PATH]`)
-      await this.getClient().unary('RestartOfflineTask', { cloudName: args[1], cloudAccountId: args[2], infoHash: args[3], url: args[4], parentId: args[5], path: args[6] })
-      await msg.edit({ text: '✅ 离线任务已重启' })
-      return
-    }
+
     if (action === 'list') {
-      const result = await this.getClient().unary('ListOfflineFilesByPath', { path: normalizePath(args[1] || '/') })
-      const files = (result.offlineFiles || []) as RpcResponse[]
-      const lines = files.length ? files.map((file) => `• <code>${htmlEscape(file.name || '未知')}</code> · ${htmlEscape(file.infoHash || '')} · ${file.percentDone || 0}%`) : ['没有离线下载任务']
-      await msg.edit({ text: htmlText(['<b>🌐 离线下载任务</b>', '', ...lines].join('\n')) })
+      if (!args[1]) throw new Error(`用法：${commandName} remote list <目录>`)
+      const targetPath = normalizePath(args.slice(1).join(' '))
+      const files = await this.getOfflineFiles(targetPath, true)
+      await this.showOfflineFiles(msg, '离线下载任务', targetPath, files)
       return
     }
+
     if (action === 'list-all') {
-      const result = await this.getClient().unary('ListAllOfflineFiles', { cloudName: args[1] || '', cloudAccountId: args[2] || '', page: Number(args[3] || 1) })
-      const files = (result.offlineFiles || []) as RpcResponse[]
-      const lines = files.length ? files.map((file) => `• <code>${htmlEscape(file.name || '未知')}</code> · ${htmlEscape(file.infoHash || '')} · ${file.percentDone || 0}%`) : ['没有离线下载任务']
-      await msg.edit({ text: htmlText([`<b>🌐 离线下载任务（第 ${result.pageNo || 1}/${result.pageCount || 1} 页）</b>`, '', ...lines].join('\n')) })
+      if (!args[1]) throw new Error(`用法：${commandName} remote list-all <目录> [页码]`)
+      const hasPage = args.length > 2 && /^\d+$/.test(String(args.at(-1)))
+      const page = hasPage ? Number(args.at(-1)) : 1
+      if (page < 1) throw new Error('页码必须大于或等于 1')
+      const targetPath = normalizePath(args.slice(1, hasPage ? -1 : undefined).join(' '))
+      const cloud = await this.resolveOfflineCloud(targetPath)
+      const result = await this.getClient().unary('ListAllOfflineFiles', { ...cloud, page })
+      await this.showOfflineFiles(msg, `离线下载任务（第 ${result.pageNo || page}/${result.pageCount || 1} 页）`, targetPath, (result.offlineFiles || []) as RpcResponse[])
       return
     }
+
     if (action === 'remove') {
-      if (!args[1] || !args[2] || args[3]?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} remote remove CLOUD_NAME CLOUD_ACCOUNT_ID confirm [哈希值]`)
-      const hashes = args.slice(4)
-      if (!hashes.length) throw new Error('至少需要一个 infoHash')
-      await this.getClient().unary('RemoveOfflineFiles', { cloudName: args[1], cloudAccountId: args[2], deleteFiles: false, infoHashes: hashes })
-      await msg.edit({ text: '✅ 离线下载任务已删除' })
+      if (args.length < 4 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} remote remove <目录> <信息哈希> confirm`)
+      const infoHash = String(args.at(-2) || '').trim()
+      const targetPath = normalizePath(args.slice(1, -2).join(' '))
+      const cloud = await this.resolveOfflineCloud(targetPath)
+      const result = await this.getClient().unary('RemoveOfflineFiles', { ...cloud, deleteFiles: false, infoHashes: [infoHash] })
+      if (result.success === false) throw new Error(result.errorMessage || 'CloudDrive2 删除离线任务失败')
+      await msg.edit({ text: htmlText(['✅ <b>离线下载任务已删除</b>', `<b>目录：</b> <code>${htmlEscape(targetPath)}</code>`, `<b>哈希：</b> <code>${htmlEscape(shortHash(infoHash))}</code>`].join('\n')) })
       return
     }
-    throw new Error(
-      usageText(`${commandName} remote add`, `${commandName} remote list`, `${commandName} remote list-all`, `${commandName} remote remove`, `${commandName} remote upload`, `${commandName} remote control`, `${commandName} remote quota`, `${commandName} remote clear`, `${commandName} remote restart`)
-    )
+
+    if (action === 'quota') {
+      if (!args[1]) throw new Error(`用法：${commandName} remote quota <目录>`)
+      const cloud = await this.resolveOfflineCloud(args.slice(1).join(' '))
+      const result = await this.getClient().unary('GetOfflineQuotaInfo', cloud)
+      await msg.edit({ text: htmlText(['<b>🌐 离线任务配额</b>', `<b>目录：</b> <code>${htmlEscape(cloud.path)}</code>`, `<b>总数：</b> ${result.total || 0}`, `<b>已用：</b> ${result.used || 0}`, `<b>剩余：</b> ${result.left || 0}`].join('\n')) })
+      return
+    }
+
+    if (action === 'clear') {
+      if (args.length < 4 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`用法：${commandName} remote clear <目录> <all|finished|error|downloading> [delete] confirm`)
+      const values = args.slice(1, -1)
+      const deleteFiles = values.at(-1)?.toLowerCase() === 'delete'
+      if (deleteFiles) values.pop()
+      const filterName = String(values.pop() || '').toLowerCase()
+      const filter = { all: 0, finished: 1, error: 2, downloading: 3 }[filterName]
+      if (filter === undefined) throw new Error('筛选只支持 all、finished、error、downloading')
+      const cloud = await this.resolveOfflineCloud(values.join(' '))
+      await this.getClient().unary('ClearOfflineFiles', { ...cloud, filter, deleteFiles })
+      await msg.edit({ text: htmlText(['✅ <b>离线任务已清理</b>', `<b>目录：</b> <code>${htmlEscape(cloud.path)}</code>`, `<b>筛选：</b> ${htmlEscape(filterName)}`, `<b>同时删除文件：</b> ${deleteFiles ? '是' : '否'}`].join('\n')) })
+      return
+    }
+
+    if (action === 'restart') {
+      if (args.length < 3) throw new Error(`用法：${commandName} remote restart <目录> <信息哈希>`)
+      const inputHash = String(args.at(-1) || '')
+      const targetPath = normalizePath(args.slice(1, -1).join(' '))
+      const task = this.findOfflineTask(await this.getOfflineFiles(targetPath, true), inputHash)
+      const cloud = await this.resolveOfflineCloud(targetPath)
+      const infoHash = String(task.infoHash || '')
+      const url = String(task.url || '')
+      const parentId = String(task.parentId || '')
+      if (!infoHash || !url || !parentId) throw new Error('CloudDrive2 返回的任务缺少重启所需信息')
+      await this.getClient().unary('RestartOfflineTask', { ...cloud, infoHash, url, parentId })
+      await msg.edit({ text: htmlText(['✅ <b>离线下载任务已重启</b>', `<b>名称：</b> <code>${htmlEscape(String(task.name || '等待云盘解析'))}</code>`, `<b>哈希：</b> <code>${htmlEscape(shortHash(infoHash))}</code>`].join('\n')) })
+      return
+    }
+
+    throw new Error(`未知离线操作：${action}。请使用 ${commandName} h remote 查看帮助`)
   }
 
   private async handleSystem(msg: MessageContext, args: string[]): Promise<void> {
@@ -3880,60 +4000,110 @@ class Cd2Plugin extends Plugin {
     throw new Error(usageText(`${commandName} dav status`, `${commandName} dav on`, `${commandName} dav off`, `${commandName} dav account`, `${commandName} dav ls`, `${commandName} dav mkdir`, `${commandName} dav rm`, `${commandName} dav add`, `${commandName} dav remove`))
   }
 
-  private async handleUpload(msg: MessageContext, args: string[]): Promise<void> {
+  private async handleUpload(msg: MessageContext, inputPath: string): Promise<void> {
     const config = await this.getConfig()
     const replied = await safeGetReplyMessage(msg)
     const media = replied?.media as { type?: string; fileName?: string; mimeType?: string } | undefined
     const supportedTypes = new Set(['photo', 'document', 'video', 'audio', 'voice', 'sticker'])
     if (!replied || !media || !supportedTypes.has(media.type || '')) {
-      throw new Error(`请回复 Telegram 图片、视频或文件后使用 ${commandName} up [目标目录]`)
+      throw new Error(`请回复 Telegram 图片、视频或文件后使用 ${commandName} <目标目录> up`)
     }
     const telegram = (await getGlobalClient()) as { downloadAsBuffer: (media: unknown) => Promise<Buffer> }
     await msg.edit({ text: '🔄 正在下载 Telegram 文件…' })
     const data = Buffer.from(await telegram.downloadAsBuffer(media))
     if (data.length > 128 * 1024 * 1024) throw new Error('单个上传文件不能超过 128 MiB')
     const fileName = media.fileName || `telegram-${replied.id || Date.now()}.${getMediaExtension(media)}`
-    const requestedPath = args[0] ? normalizePath(args[0]) : normalizePath(config.webdavRoot)
+    const requestedPath = normalizePath(inputPath)
     const remotePath = `${requestedPath === '/' ? '' : requestedPath}/${fileName}`
     await msg.edit({ text: `🔄 正在上传 <code>${htmlEscape(remotePath)}</code>（${formatBytes(data.length)}）…` })
     await davRequest(config, 'PUT', remotePath, data, { 'Content-Type': media.mimeType || 'application/octet-stream' })
     await msg.edit({ text: htmlText(`✅ 已上传到 WebDAV：<code>${htmlEscape(remotePath)}</code>`) })
   }
 
-  private async handleMutation(msg: MessageContext, args: string[]): Promise<void> {
-    const action = args[0]?.toLowerCase()
+  private async handleMutation(msg: MessageContext, inputPath: string, action: string, values: string[]): Promise<void> {
+    const targetPath = normalizePath(inputPath)
     if (action === 'mkdir') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} mkdir /父目录 文件夹名`)
-      const result = await this.getClient().unary('CreateFolder', { parentPath: normalizePath(args[1]), folderName: args.slice(2).join(' ') })
+      const folderName = values.join(' ').trim()
+      if (!folderName) throw new Error(`用法：${commandName} <父目录> mkdir <文件夹名>`)
+      const result = await this.getClient().unary('CreateFolder', { parentPath: targetPath, folderName })
       if (result.result && result.result.success === false) throw new Error(result.result.errorMessage || '创建文件夹失败')
       await msg.edit({ text: '✅ 文件夹已创建' })
       return
     }
     if (action === 'rm') {
-      if (args.length < 3 || args.at(-1)?.toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} rm /路径 confirm`)
-      const targetPath = args.slice(1, -1).join(' ')
-      const result = await this.getClient().unary('DeleteFile', { path: normalizePath(targetPath) })
+      if (values.length !== 1 || values[0].toLowerCase() !== 'confirm') throw new Error(`删除是破坏性操作，请使用：${commandName} <路径> rm confirm`)
+      const result = await this.getClient().unary('DeleteFile', { path: targetPath })
       if (result.success === false) throw new Error(result.errorMessage || '删除失败')
       await msg.edit({ text: '✅ 已删除' })
       return
     }
     if (action === 'mv' || action === 'cp') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} ${action} /源路径 /目标目录`)
+      const destination = values.join(' ').trim()
+      if (!destination) throw new Error(`用法：${commandName} <源路径> ${action} <目标目录>`)
       const method = action === 'mv' ? 'MoveFile' : 'CopyFile'
-      const result = await this.getClient().unary(method, { theFilePaths: [normalizePath(args[1])], destPath: normalizePath(args[2]), conflictPolicy: 'Rename' })
+      const result = await this.getClient().unary(method, { theFilePaths: [targetPath], destPath: normalizePath(destination), conflictPolicy: 'Rename' })
       if (result.success === false) throw new Error(result.errorMessage || `${action} 失败`)
       await msg.edit({ text: `✅ ${action === 'mv' ? '移动' : '复制'}任务已提交` })
       return
     }
     if (action === 'rename') {
-      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} rename /文件 新名称`)
-      const targetPath = normalizePath(args[1])
-      const result = await this.getClient().unary('RenameFile', { theFilePath: targetPath, newName: args.slice(2).join(' ') })
+      const newName = values.join(' ').trim()
+      if (!newName) throw new Error(`用法：${commandName} <路径> rename <新名称>`)
+      const result = await this.getClient().unary('RenameFile', { theFilePath: targetPath, newName })
       if (result.success === false) throw new Error(result.errorMessage || '重命名失败')
       await msg.edit({ text: '✅ 文件已重命名' })
       return
     }
-    throw new Error('未知文件操作，请使用 .h cd2 查看帮助')
+    throw new Error(`未知文件操作，请使用 ${commandName} h file 查看帮助`)
+  }
+
+  private async handlePathCommand(msg: MessageContext, args: string[]): Promise<void> {
+    const parsed = parsePathCommand(args)
+    if (!parsed) throw new Error(`用法：${commandName} <路径> <操作> [参数]；详情：${commandName} h file`)
+    const { path: targetPath, action, values } = parsed
+    const requireNoValues = (): void => {
+      if (values.length) throw new Error(`操作 ${action} 后不需要其他参数；详情：${commandName} h file`)
+    }
+    if (action === 'ls') {
+      requireNoValues()
+      await this.handleList(msg, targetPath)
+      return
+    }
+    if (action === 'find') {
+      requireNoValues()
+      await this.handleFind(msg, targetPath)
+      return
+    }
+    if (action === 'grep') {
+      await this.handleSearch(msg, targetPath, values.join(' '))
+      return
+    }
+    if (action === 'df') {
+      requireNoValues()
+      await this.handleSpace(msg, targetPath)
+      return
+    }
+    if (['detail', 'meta', 'original'].includes(action)) {
+      requireNoValues()
+      await this.handleFileInfo(msg, targetPath, action)
+      return
+    }
+    if (action === 'dl') {
+      requireNoValues()
+      await this.handleDownload(msg, targetPath)
+      return
+    }
+    if (action === 'up') {
+      requireNoValues()
+      await this.handleUpload(msg, targetPath)
+      return
+    }
+    if (action === 'rup') {
+      requireNoValues()
+      await this.handleRemoteUpload(msg, targetPath)
+      return
+    }
+    await this.handleMutation(msg, targetPath, action, values)
   }
 
   cmdHandlers: Record<string, (msg: MessageContext) => Promise<void>> = {
@@ -3941,8 +4111,12 @@ class Cd2Plugin extends Plugin {
       try {
         const args = tokenize(msg.text).slice(1)
         const subcommand = args[0]?.toLowerCase()
-        if (!subcommand || subcommand === 'h') {
+        if (!subcommand) {
           return
+        } else if (subcommand === 'h' || subcommand === 'help' || subcommand === '?') {
+          await this.handleHelp(msg, args.slice(1))
+        } else if (subcommand.startsWith('/')) {
+          await this.handlePathCommand(msg, args)
         } else if (subcommand === 'conf') {
           await this.handleConfig(msg, args.slice(1))
         } else if (subcommand === 'collapse') {
@@ -3961,17 +4135,6 @@ class Cd2Plugin extends Plugin {
           await this.handleVerify(msg)
         } else if (subcommand === 'status') {
           await this.handleStatus(msg)
-        } else if (subcommand === 'ls') {
-          await this.handleList(msg, args.slice(1).join(' ') || undefined)
-        } else if (subcommand === 'find') {
-          if (!args[1]) throw new Error(`用法：${commandName} find /路径/文件`)
-          await this.handleFind(msg, args.slice(1).join(' '))
-        } else if (subcommand === 'file') {
-          await this.handleFileInfo(msg, args.slice(1))
-        } else if (subcommand === 'grep') {
-          await this.handleSearch(msg, args.slice(1))
-        } else if (subcommand === 'df') {
-          await this.handleSpace(msg, args.slice(1).join(' ') || undefined)
         } else if (subcommand === 'tasks') {
           await this.handleTasks(msg)
         } else if (subcommand === 'transfer') {
@@ -3986,17 +4149,10 @@ class Cd2Plugin extends Plugin {
           await this.handleRemote(msg, args.slice(1))
         } else if (subcommand === 'system') {
           await this.handleSystem(msg, args.slice(1))
-        } else if (subcommand === 'dl') {
-          if (!args[1]) throw new Error(`用法：${commandName} dl /路径/文件`)
-          await this.handleDownload(msg, args.slice(1).join(' '))
         } else if (subcommand === 'dav') {
           await this.handleDav(msg, args.slice(1))
-        } else if (subcommand === 'up') {
-          await this.handleUpload(msg, args.slice(1))
-        } else if (['mkdir', 'rm', 'mv', 'cp', 'rename'].includes(subcommand)) {
-          await this.handleMutation(msg, args)
         } else {
-          throw new Error('未知命令，请使用 .h cd2 查看帮助')
+          throw new Error(`未知命令，请使用 ${commandName} h 查看帮助目录`)
         }
       } catch (error) {
         await msg.edit({ text: htmlText(`❌ ${htmlEscape(errorMessage(error))}`), disableWebPreview: true })

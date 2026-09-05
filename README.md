@@ -16,21 +16,20 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 
 ## cd2 setup
 
-帮助入口：`.h cd2`。直接输入 `.cd2` 或 `.cd2 h` 不会显示任何内容。
+`.h cd2` 只显示简短的帮助分区目录；使用 `.cd2 h file`、`.cd2 h remote` 等命令查看可复制的分区帮助。直接输入 `.cd2` 不显示内容。
 
 当前已接入的命令和用途：
 
 ### 账户与安全
 
-- `.cd2 collapse`：查看 Telegram 原生折叠状态；`.cd2 collapse on` 开启，`.cd2 collapse off` 关闭。`.h cd2` 会按当前设置显示或关闭原生折叠。
-- `.cd2 conf show`：查看当前配置，服务地址、账户、Token、默认路径和 WebDAV 配置中的敏感值会自动脱敏。
+- `.cd2 collapse`：查看 Telegram 原生折叠状态；`.cd2 collapse on` 开启，`.cd2 collapse off` 关闭。该设置只影响 `.cd2 h <分区>` 的详细帮助。
+- `.cd2 conf show`：查看当前配置，服务地址、账户、Token 和 WebDAV 配置中的敏感值会自动脱敏。
 - `.cd2 conf endpoint 地址`：设置 CloudDrive2 服务地址。
 - `.cd2 conf account 用户名 密码`：保存 CloudDrive2 账户用户名和密码，并清除旧 API Token。
 - `.cd2 conf token API令牌`：保存 API Token，后续 CloudDrive2 请求优先使用该 Token。
-- `.cd2 conf path 默认路径`：设置文件浏览、上传、下载和任务命令使用的默认路径。
 - `.cd2 conf dav-url WebDAV地址`：设置 WebDAV 服务地址。
 - `.cd2 conf dav-user 用户名 密码`：设置 WebDAV 用户名和密码；未单独配置时可使用 CloudDrive2 账户。
-- `.cd2 conf dav-root 上传根目录`：设置 Telegram 文件通过 WebDAV 上传时使用的根目录。
+- `.cd2 conf dav-root 账户根目录`：设置 WebDAV 账户模式使用的默认根目录。
 - `.cd2 account logout`：退出 CloudDrive2，并清除本地登录 Token。
 - `.cd2 account reset-email` / `.cd2 account reset`：发送密码重置邮件或执行密码重置。
 - `.cd2 account delete-email` / `.cd2 account delete DELETE_CODE PASSWORD [TOTP] [forfeit] confirm`：发送账户注销邮件，并在确认后注销账户。
@@ -41,13 +40,16 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 
 ### 文件、挂载和传输
 
-- `.cd2 ls|find|grep`：浏览目录、按名称搜索文件、搜索文件内容。
-- `.cd2 mkdir|rename|mv|cp|rm`：创建目录、改名、移动、复制和删除文件。
-- `.cd2 df`：查看空间使用情况；`.cd2 file detail|meta|original`：查看文件详情、元数据和原始路径。
-- `.cd2 dl /路径/文件`：下载 CloudDrive2 文件并替换当前命令消息，不生成公开下载链接。
+- 文件操作统一使用路径优先格式：`.cd2 <路径> <操作> [参数]`。
+- `.cd2 /目录 ls` / `.cd2 /路径 find` / `.cd2 /目录 grep 关键词`：浏览、查找和搜索文件。
+- `.cd2 /父目录 mkdir 名称` / `.cd2 /路径 rename 新名称` / `.cd2 /源路径 mv|cp /目标目录` / `.cd2 /路径 rm confirm`：创建、改名、移动、复制和删除。
+- `.cd2 /路径 df|detail|meta|original`：查看空间、详情、元数据和原始路径。
+- `.cd2 /路径/文件 dl`：下载 CloudDrive2 文件并替换当前命令消息，不生成公开下载链接。
+- 回复 Telegram 文件后使用 `.cd2 /目标目录 up` 通过 WebDAV 上传，或使用 `.cd2 /目标目录 rup` 通过官方远程上传协议上传。
 - `.cd2 transfer status|downloads|uploads`：查看任务总量和下载/上传进度。
 - `.cd2 transfer copies|merges`：查看复制/移动任务和合并任务。
 - `.cd2 transfer pause|resume|cancel`：控制下载/上传任务。
+- `.cd2 transfer remote UPLOAD_ID pause|resume|cancel`：控制由 `rup` 创建的官方远程上传。
 - `.cd2 transfer copy pause|resume|cancel|restart SOURCE DEST`：暂停、恢复、取消或重启指定复制任务。
 - `.cd2 transfer copy pause-all|resume-all|remove-completed|remove-all`：批量暂停、恢复或清理复制任务。
 - `.cd2 transfer copy pause|resume|remove TASK_KEY`：按任务键控制或删除复制任务。
@@ -74,12 +76,13 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 - `.cd2 backup rule add|clear`：设置扩展名、文件名、正则、大小及黑白名单规则。
 - `.cd2 backup restart`：立即重新扫描；`can-add` 查询是否还能添加备份。
 
-### 远程上传、离线任务和系统
+### 离线任务和系统
 
-- 回复 Telegram 文件后使用 `.cd2 remote upload /目标目录`：通过 CloudDrive2 官方远程上传协议上传。
-- `.cd2 remote control pause|resume|cancel`：控制远程上传。
-- `.cd2 remote add|list|list-all|remove`：创建、查看和删除网盘离线下载任务。
-- `.cd2 remote quota|clear|restart`：查询离线配额、清理离线任务、重启失败任务。
+- `.cd2 remote add /目标目录 magnet:...`：添加离线下载；目录固定放在磁力链接前面。
+- `.cd2 remote list /目录` / `.cd2 remote list-all /目录 [页码]`：查看指定目录或所属云盘的离线任务。
+- `.cd2 remote remove /目录 INFO_HASH confirm`：删除任务；`.cd2 remote restart /目录 INFO_HASH`：重启任务。
+- `.cd2 remote quota /目录`：查询配额；`.cd2 remote clear /目录 all|finished|error|downloading [delete] confirm`：清理任务。
+- 云盘名称、账户编号、任务 URL 和父目录编号由插件根据路径与任务自动解析，不再要求用户手动输入。
 - `.cd2 system runtime|settings|set`：查看运行信息、系统设置和修改单项设置。
 - `.cd2 system set-log` / `.cd2 system set-backup-limits`：整体修改日志轮换和备份资源限制。
 - `.cd2 system cache stats|list`：查看缓存统计和缓存目录；`.cd2 system cache purge`：清理缓存。
@@ -92,7 +95,7 @@ Classic TeleBox versions are maintained separately in [s-theo/TeleBox-Plugins](h
 - `.cd2 dav ls|mkdir|rm`：浏览、创建或删除 WebDAV 路径。
 - `.cd2 dav add|remove`：添加或删除独立 WebDAV 用户。
 
-Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账号密码等敏感值只作为命令参数发送，不会写入插件配置。具体参数格式请使用 `.h cd2` 查看对应命令说明。
+Cloud API 的二维码登录会返回登录状态消息；OAuth、Cookie、账号密码等敏感值只作为命令参数发送，不会写入插件配置。具体参数格式请使用 `.cd2 h <分区>` 查看对应命令说明。
 
 The `cd2` plugin uses CloudDrive2's gRPC API. Configure it in Telegram after loading the plugin:
 
@@ -122,14 +125,14 @@ WebDAV management and Telegram upload:
 .cd2 dav add USER PASSWORD /Telegram
 .cd2 dav account off
 .cd2 dav remove USER confirm
-.cd2 up
+.cd2 /Telegram up
 ```
 
 `.cd2 login` 配置的 CloudDrive 账户可以直接用于 WebDAV；`.cd2 dav account on` 启用账户模式。`.cd2 dav add` 仍然可以添加独立的 WebDAV 用户，两种模式可以同时使用。`.cd2 dav status` 会分别显示账户模式和独立用户；消息使用真实换行显示。
 
-Reply to a Telegram file before sending `.cd2 up [目标目录]`; the file is downloaded through the host Telegram client and uploaded with WebDAV `PUT`. The target argument is always treated as a directory, so both `.cd2 up /GoogleDrive` and `.cd2 up /GoogleDrive/` are valid. If Telegram does not provide a filename, the plugin adds an extension from the media type, such as `.jpg` for a photo.
+Reply to a Telegram file before sending `.cd2 /目标目录 up`; the file is downloaded through the host Telegram client and uploaded with WebDAV `PUT`. The path before `up` is always treated as a directory. If Telegram does not provide a filename, the plugin adds an extension from the media type, such as `.jpg` for a photo. Use `.cd2 /目标目录 rup` for CloudDrive2's official remote-upload protocol.
 
-Use `.cd2 dl /路径/文件` to download a file from CloudDrive2 and replace the current command message with the downloaded file. Paths containing spaces are supported without quoting. Linux-style commands such as `ls`, `find`, `grep`, `mkdir`, `mv`, `cp`, `rm`, `df`, and `mount` are used where appropriate.
+Use `.cd2 /路径/文件 dl` to download a file from CloudDrive2 and replace the current command message with the downloaded file. File operations use `.cd2 <路径> <操作> [参数]`; paths containing spaces are supported, while quoting remains recommended when a path segment is also an operation word such as `up` or `rm`.
 
 ## Development
 
