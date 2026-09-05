@@ -329,7 +329,7 @@ const helpSections: HelpSection[] = [
     title: '远程上传与离线任务',
     lines: [
       `${commandName} remote add 地址 目标路径 — 创建离线下载任务`,
-      `${commandName} remote list — 查看当前离线下载任务`,
+      `${commandName} remote list [目标路径] — 查看指定目录的离线下载任务`,
       `${commandName} remote list-all 云盘名称 用户名 页码 — 查看全部离线任务`,
       `${commandName} remote remove 云盘名称 用户名 confirm — 删除离线任务`,
       `${commandName} remote upload 目标目录 — 回复 Telegram 文件并使用官方远程上传协议`,
@@ -573,6 +573,46 @@ const errorMessage = (error: unknown): string => {
   const candidate = error as { details?: string; message?: string; code?: number }
   const text = candidate?.details || candidate?.message || String(error)
   return text.replace(/^Error:\s*/i, '').slice(0, 500)
+}
+
+const GRPC_STATUS_NAMES: Record<string, string> = {
+  '1': 'CANCELLED',
+  '2': 'UNKNOWN',
+  '3': 'INVALID_ARGUMENT',
+  '4': 'DEADLINE_EXCEEDED',
+  '5': 'NOT_FOUND',
+  '6': 'ALREADY_EXISTS',
+  '7': 'PERMISSION_DENIED',
+  '8': 'RESOURCE_EXHAUSTED',
+  '9': 'FAILED_PRECONDITION',
+  '10': 'ABORTED',
+  '11': 'OUT_OF_RANGE',
+  '12': 'UNIMPLEMENTED',
+  '13': 'INTERNAL',
+  '14': 'UNAVAILABLE',
+  '15': 'DATA_LOSS',
+  '16': 'UNAUTHENTICATED'
+}
+
+const grpcHeaderValue = (value: unknown): string => {
+  const first = Array.isArray(value) ? value[0] : value
+  return first === undefined || first === null ? '' : String(first)
+}
+
+const decodeGrpcMessage = (value: unknown): string => {
+  const encoded = grpcHeaderValue(value)
+  if (!encoded) return ''
+  try {
+    return decodeURIComponent(encoded)
+  } catch {
+    return encoded
+  }
+}
+
+const createGrpcError = (method: string, status: string, message: string): Error => {
+  const statusName = GRPC_STATUS_NAMES[status] || 'UNKNOWN'
+  const details = message.trim() || (status === '13' ? 'CloudDrive2 服务端发生内部错误，请在网页端使用相同参数重试' : '')
+  return new Error(`CD2 gRPC ${method} 失败：${statusName} (${status})${details ? `：${details}` : ''}`)
 }
 
 const parseProxySetting = (value: string): Record<string, unknown> => {
@@ -1137,15 +1177,18 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
     case 'AddOfflineFiles':
       add(1, request.urls)
       add(2, request.toFolder)
+      if (request.checkFolderAfterSecs !== undefined) addPresent(3, request.checkFolderAfterSecs as number)
       break
     case 'RemoveOfflineFiles':
       add(1, request.cloudName)
       add(2, request.cloudAccountId)
       addBoolean(3, request.deleteFiles)
       add(4, request.infoHashes)
+      add(5, request.path)
       break
     case 'ListOfflineFilesByPath':
-      addPresent(2, Boolean(request.forceRefresh))
+      add(1, request.path)
+      if (request.forceRefresh !== undefined) addPresent(2, Boolean(request.forceRefresh))
       break
     case 'GetFileDetailProperties':
     case 'GetMetaData':
@@ -1390,8 +1433,8 @@ const encodeRequest = (method: string, request: Record<string, unknown>): Buffer
     case 'ClearOfflineFiles':
       add(1, request.cloudName)
       add(2, request.cloudAccountId)
-      addPresent(3, Number(request.filter || 0))
-      addPresent(4, Boolean(request.deleteFiles))
+      add(3, Number(request.filter || 0))
+      addBoolean(4, Boolean(request.deleteFiles))
       add(5, request.path)
       break
     case 'RestartOfflineTask':
@@ -2177,6 +2220,7 @@ class Cd2Client {
     await new Promise<void>((resolve, reject) => {
       let pending = Buffer.alloc(0)
       let grpcStatus = '0'
+      let grpcMessage = ''
       let settled = false
       let chain = Promise.resolve()
       const timer = setTimeout(() => finish(new Error('CD2 远程上传通道超时')), 60 * 60 * 1000)
@@ -2187,7 +2231,7 @@ class Cd2Client {
         stream.close()
         session.close()
         if (error) reject(error)
-        else if (grpcStatus !== '0') reject(new Error(`CD2 gRPC 错误状态：${grpcStatus}`))
+        else if (grpcStatus !== '0') reject(createGrpcError(method, grpcStatus, grpcMessage))
         else resolve()
       }
       session.on('error', (error) => finish(error))
@@ -2202,10 +2246,12 @@ class Cd2Client {
       const stream = session.request(headers)
       stream.on('response', (responseHeaders) => {
         if (Number(responseHeaders[':status'] || 200) >= 400) finish(new Error(`CD2 HTTP 状态异常：${responseHeaders[':status']}`))
-        if (responseHeaders['grpc-status']) grpcStatus = String(responseHeaders['grpc-status'])
+        if (responseHeaders['grpc-status']) grpcStatus = grpcHeaderValue(responseHeaders['grpc-status'])
+        if (responseHeaders['grpc-message']) grpcMessage = decodeGrpcMessage(responseHeaders['grpc-message'])
       })
       stream.on('trailers', (trailers) => {
-        if (trailers['grpc-status']) grpcStatus = String(trailers['grpc-status'])
+        if (trailers['grpc-status']) grpcStatus = grpcHeaderValue(trailers['grpc-status'])
+        if (trailers['grpc-message']) grpcMessage = decodeGrpcMessage(trailers['grpc-message'])
       })
       stream.on('data', (chunk: Buffer) => {
         pending = Buffer.concat([pending, chunk])
@@ -2238,6 +2284,7 @@ class Cd2Client {
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = []
       let grpcStatus = '0'
+      let grpcMessage = ''
       let settled = false
       const timer = setTimeout(() => finish(new Error('CD2 请求超时')), REQUEST_TIMEOUT)
       const finish = (error?: Error): void => {
@@ -2250,23 +2297,27 @@ class Cd2Client {
           return
         }
         if (grpcStatus !== '0') {
-          reject(new Error(`CD2 gRPC 错误状态：${grpcStatus}`))
+          reject(createGrpcError(method, grpcStatus, grpcMessage))
           return
         }
-        const body = Buffer.concat(chunks)
-        const responses: RpcResponse[] = []
-        let offset = 0
-        while (offset + 5 <= body.length) {
-          const compressed = body[offset]
-          const length = body.readUInt32BE(offset + 1)
-          offset += 5
-          if (offset + length > body.length) throw new Error('CD2 返回了截断的 gRPC 帧')
-          if (compressed !== 0) throw new Error('CD2 返回了不支持的压缩 gRPC 帧')
-          responses.push(decodeResponse(method, body.subarray(offset, offset + length)))
-          offset += length
+        try {
+          const body = Buffer.concat(chunks)
+          const responses: RpcResponse[] = []
+          let offset = 0
+          while (offset + 5 <= body.length) {
+            const compressed = body[offset]
+            const length = body.readUInt32BE(offset + 1)
+            offset += 5
+            if (offset + length > body.length) throw new Error('CD2 返回了截断的 gRPC 帧')
+            if (compressed !== 0) throw new Error('CD2 返回了不支持的压缩 gRPC 帧')
+            responses.push(decodeResponse(method, body.subarray(offset, offset + length)))
+            offset += length
+          }
+          if (offset !== body.length) throw new Error('CD2 返回了无效的 gRPC 帧')
+          resolve(streaming ? responses : responses.slice(0, 1))
+        } catch (decodeError) {
+          reject(decodeError instanceof Error ? decodeError : new Error(errorMessage(decodeError)))
         }
-        if (offset !== body.length) throw new Error('CD2 返回了无效的 gRPC 帧')
-        resolve(streaming ? responses : responses.slice(0, 1))
       }
       session.on('error', (error) => finish(error))
       const headers: Record<string, string> = {
@@ -2280,10 +2331,12 @@ class Cd2Client {
       const stream = session.request(headers)
       stream.on('response', (responseHeaders) => {
         if (Number(responseHeaders[':status'] || 200) >= 400) finish(new Error(`CD2 HTTP 状态异常：${responseHeaders[':status']}`))
-        if (responseHeaders['grpc-status']) grpcStatus = String(responseHeaders['grpc-status'])
+        if (responseHeaders['grpc-status']) grpcStatus = grpcHeaderValue(responseHeaders['grpc-status'])
+        if (responseHeaders['grpc-message']) grpcMessage = decodeGrpcMessage(responseHeaders['grpc-message'])
       })
       stream.on('trailers', (trailers) => {
-        if (trailers['grpc-status']) grpcStatus = String(trailers['grpc-status'])
+        if (trailers['grpc-status']) grpcStatus = grpcHeaderValue(trailers['grpc-status'])
+        if (trailers['grpc-message']) grpcMessage = decodeGrpcMessage(trailers['grpc-message'])
       })
       stream.on('data', (chunk: Buffer) => chunks.push(chunk))
       stream.on('error', (error) => finish(error))
@@ -3373,10 +3426,18 @@ class Cd2Plugin extends Plugin {
   private async handleRemote(msg: MessageContext, args: string[]): Promise<void> {
     const action = args[0]?.toLowerCase() || 'list'
     if (action === 'add') {
-      if (!args[1]) throw new Error(`用法：${commandName} remote add URL [目标目录]`)
-      const result = await this.getClient().unary('AddOfflineFiles', { urls: args[1], toFolder: normalizePath(args[2] || '/') })
-      if (result.success === false) throw new Error(result.errorMessage || '远程上传任务提交失败')
-      await msg.edit({ text: htmlText(['✅ <b>远程上传任务已提交</b>', ...(result.resultFilePaths || []).map((item: string) => `<code>${htmlEscape(item)}</code>`)].join('\n')) })
+      if (!args[1] || !args[2]) throw new Error(`用法：${commandName} remote add URL 目标目录`)
+      const urls = args[1].trim()
+      if (/^magnet:/i.test(urls) && !/[?&]xt=urn:(?:btih|btmh):[^&\s]+/i.test(urls)) throw new Error('磁力链接不完整：缺少 xt=urn:btih 或 xt=urn:btmh 参数')
+      const toFolder = normalizePath(args.slice(2).join(' '))
+      let result: RpcResponse
+      try {
+        result = await this.getClient().unary('AddOfflineFiles', { urls, toFolder })
+      } catch (error) {
+        throw new Error(`${errorMessage(error)}；目标目录：${toFolder}`)
+      }
+      if (result.success === false) throw new Error(result.errorMessage || '离线下载任务提交失败')
+      await msg.edit({ text: htmlText(['✅ <b>离线下载任务已提交</b>', ...(result.resultFilePaths || []).map((item: string) => `<code>${htmlEscape(item)}</code>`)].join('\n')) })
       return
     }
     if (action === 'upload') {
@@ -3467,15 +3528,15 @@ class Cd2Plugin extends Plugin {
     if (action === 'list') {
       const result = await this.getClient().unary('ListOfflineFilesByPath', { path: normalizePath(args[1] || '/') })
       const files = (result.offlineFiles || []) as RpcResponse[]
-      const lines = files.length ? files.map((file) => `• <code>${htmlEscape(file.name || '未知')}</code> · ${htmlEscape(file.infoHash || '')} · ${file.percentDone || 0}%`) : ['没有远程上传任务']
-      await msg.edit({ text: htmlText(['<b>🌐 远程上传任务</b>', '', ...lines].join('\n')) })
+      const lines = files.length ? files.map((file) => `• <code>${htmlEscape(file.name || '未知')}</code> · ${htmlEscape(file.infoHash || '')} · ${file.percentDone || 0}%`) : ['没有离线下载任务']
+      await msg.edit({ text: htmlText(['<b>🌐 离线下载任务</b>', '', ...lines].join('\n')) })
       return
     }
     if (action === 'list-all') {
       const result = await this.getClient().unary('ListAllOfflineFiles', { cloudName: args[1] || '', cloudAccountId: args[2] || '', page: Number(args[3] || 1) })
       const files = (result.offlineFiles || []) as RpcResponse[]
-      const lines = files.length ? files.map((file) => `• <code>${htmlEscape(file.name || '未知')}</code> · ${htmlEscape(file.infoHash || '')} · ${file.percentDone || 0}%`) : ['没有远程上传任务']
-      await msg.edit({ text: htmlText([`<b>🌐 远程上传任务（第 ${result.pageNo || 1}/${result.pageCount || 1} 页）</b>`, '', ...lines].join('\n')) })
+      const lines = files.length ? files.map((file) => `• <code>${htmlEscape(file.name || '未知')}</code> · ${htmlEscape(file.infoHash || '')} · ${file.percentDone || 0}%`) : ['没有离线下载任务']
+      await msg.edit({ text: htmlText([`<b>🌐 离线下载任务（第 ${result.pageNo || 1}/${result.pageCount || 1} 页）</b>`, '', ...lines].join('\n')) })
       return
     }
     if (action === 'remove') {
@@ -3483,7 +3544,7 @@ class Cd2Plugin extends Plugin {
       const hashes = args.slice(4)
       if (!hashes.length) throw new Error('至少需要一个 infoHash')
       await this.getClient().unary('RemoveOfflineFiles', { cloudName: args[1], cloudAccountId: args[2], deleteFiles: false, infoHashes: hashes })
-      await msg.edit({ text: '✅ 远程上传任务已删除' })
+      await msg.edit({ text: '✅ 离线下载任务已删除' })
       return
     }
     throw new Error(
