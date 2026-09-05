@@ -675,6 +675,13 @@ const chunkText = (items: string[], max = MAX_MESSAGE_LENGTH): string[] => {
   return chunks
 }
 
+const ensureRemoteUploadCompleted = (status: number, errorMessage: string): void => {
+  if (status === 5 || status === 6) return
+  if ([2, 8, 9, 10].includes(status)) throw new Error(errorMessage || `远程上传失败，状态 ${status}`)
+  const statusDetail = status >= 0 ? `，最后状态 ${status}` : ''
+  throw new Error(`远程上传通道已结束，但未收到完成状态${statusDetail}`)
+}
+
 type ProtoScalar = bigint | Buffer
 interface ProtoField {
   number: number
@@ -3486,7 +3493,7 @@ class Cd2Plugin extends Plugin {
       }
       return true
     })
-    if ([2, 9, 10].includes(finalStatus)) throw new Error(finalError || `远程上传失败，状态 ${finalStatus}`)
+    ensureRemoteUploadCompleted(finalStatus, finalError)
     await msg.edit({ text: htmlText(`✅ 远程上传完成：<code>${htmlEscape(filePath)}</code>`) })
   }
 
