@@ -9,5 +9,5 @@
     "@biomejs/biome": "2.5.15",
     "@types/node": "^24.19.2"
   },
-  "packageManager": "pnpm@12.11.2"
+  "packageManager": "pnpm@12.14.0"
 }
