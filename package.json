@@ -6,7 +6,7 @@
     "format:check": "biome check ."
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.2",
+    "@biomejs/biome": "2.6.3",
     "@types/node": "^24.19.2"
   },
   "packageManager": "pnpm@12.15.0"
