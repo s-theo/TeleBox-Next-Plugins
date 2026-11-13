@@ -23,6 +23,7 @@ import { safeGetReplyMessage } from '@utils/safeGetMessages'
 const CONFIG = {
   TROLL_IMAGE_URL: 'https://raw.githubusercontent.com/TeleBoxOrg/TeleBox-Next/main/telebox.png',
   TROLL_IMAGE_NAME: 'dme_troll_image.png',
+  IMAGE_TIMEOUT: 10_000,
   BATCH_SIZE: 50,
   MIN_BATCH_SIZE: 5,
   MAX_BATCH_SIZE: 100,
@@ -44,11 +45,11 @@ const getErrorMessage = (error: unknown): string => (error instanceof Error ? er
 const getTrollImagePath = (): string => path.join(createDirectoryInAssets('dme'), CONFIG.TROLL_IMAGE_NAME)
 
 async function getTrollImage(): Promise<string | null> {
-  const imagePath = getTrollImagePath()
-  if (fs.existsSync(imagePath)) return imagePath
-
   try {
-    const response = await fetch(CONFIG.TROLL_IMAGE_URL)
+    const imagePath = getTrollImagePath()
+    if (fs.existsSync(imagePath)) return imagePath
+
+    const response = await fetch(CONFIG.TROLL_IMAGE_URL, { signal: AbortSignal.timeout(CONFIG.IMAGE_TIMEOUT) })
     if (!response.ok) return null
     fs.writeFileSync(imagePath, Buffer.from(await response.arrayBuffer()))
     return imagePath
@@ -58,11 +59,27 @@ async function getTrollImage(): Promise<string | null> {
   }
 }
 
-const isOwnMessage = (message: Message, myId: number): boolean => message.sender.id === myId || message.isOutgoing
+const isOwnMessage = (message: Message, myId: number): boolean => {
+  // Saved Messages can be incoming and keep the original sender when forwarded.
+  // Every message in the self chat belongs to the user's saved history.
+  const peer = message.raw.peerId
+  if ((peer._ === 'peerUser' && peer.userId === myId) || message.isOutgoing) return true
+
+  // Reading sender resolves an entity from PeersIndex and can throw for history
+  // pages with missing peers. The raw sender ID also covers Saved Messages.
+  const sender = message.raw.fromId ?? message.raw.peerId
+  return sender._ === 'peerUser' && sender.userId === myId
+}
 
 const canReplaceMedia = (message: Message): boolean => {
-  const media = message.media
-  return Boolean(media && media.type !== 'webpage' && media.type !== 'sticker')
+  try {
+    const media = message.media
+    return Boolean(media && media.type !== 'webpage' && media.type !== 'sticker')
+  } catch {
+    // Media replacement is optional; an unresolvable media object must not
+    // prevent the requested message deletion.
+    return false
+  }
 }
 
 async function editMediaMessageToAntiRecall(client: TelegramClient, chatId: number, message: Message, trollImagePath: string): Promise<boolean> {
@@ -76,7 +93,7 @@ async function editMediaMessageToAntiRecall(client: TelegramClient, chatId: numb
       text: '',
       media: {
         type: 'photo',
-        file: trollImagePath
+        file: `file:${trollImagePath}`
       }
     })
     return true
@@ -101,9 +118,10 @@ async function deleteMessagesWithRetry(client: TelegramClient, chatId: number, m
   }
 }
 
-async function adaptiveBatchDelete(client: TelegramClient, chatId: number, messageIds: number[]): Promise<{ deletedCount: number; failedCount: number }> {
+async function adaptiveBatchDelete(client: TelegramClient, chatId: number, messageIds: number[]): Promise<{ deletedCount: number; failedCount: number; lastError?: string }> {
   let deletedCount = 0
   let failedCount = 0
+  let lastError: string | undefined
   let currentBatchSize: number = CONFIG.BATCH_SIZE
   let index = 0
 
@@ -115,6 +133,7 @@ async function adaptiveBatchDelete(client: TelegramClient, chatId: number, messa
       currentBatchSize = Math.min(CONFIG.MAX_BATCH_SIZE, currentBatchSize + 10)
       await sleep(CONFIG.DELAYS.BATCH)
     } catch (error: unknown) {
+      lastError = getErrorMessage(error)
       failedCount += batch.length
       index += batch.length
       currentBatchSize = Math.max(CONFIG.MIN_BATCH_SIZE, Math.floor(currentBatchSize / 2))
@@ -122,16 +141,17 @@ async function adaptiveBatchDelete(client: TelegramClient, chatId: number, messa
     }
   }
 
-  return { deletedCount, failedCount }
+  return { deletedCount, failedCount, lastError }
 }
 
 async function processBatchWithAntiRecall(client: TelegramClient, chatId: number, messages: Message[]): Promise<{ deleted: number; edited: number }> {
   if (messages.length === 0) return { deleted: 0, edited: 0 }
 
   let edited = 0
-  const trollImagePath = await getTrollImage()
+  const mediaMessages = messages.filter((message) => canReplaceMedia(message) && Date.now() - message.date.getTime() <= 48 * 60 * 60 * 1000)
+  const trollImagePath = mediaMessages.length > 0 ? await getTrollImage() : null
   if (trollImagePath) {
-    const results = await Promise.allSettled(messages.map((message) => editMediaMessageToAntiRecall(client, chatId, message, trollImagePath)))
+    const results = await Promise.allSettled(mediaMessages.map((message) => editMediaMessageToAntiRecall(client, chatId, message, trollImagePath)))
     edited = results.filter((result) => result.status === 'fulfilled' && result.value).length
     if (edited > 0) await sleep(CONFIG.DELAYS.EDIT_WAIT)
   }
@@ -141,6 +161,9 @@ async function processBatchWithAntiRecall(client: TelegramClient, chatId: number
     chatId,
     messages.map((message) => message.id)
   )
+  if (deletion.failedCount > 0) {
+    throw new Error(`本批已删除 ${deletion.deletedCount} 条，${deletion.failedCount} 条删除失败：${deletion.lastError}`)
+  }
   return { deleted: deletion.deletedCount, edited }
 }
 
@@ -239,6 +262,12 @@ const dme = async (msg: MessageContext): Promise<void> => {
   try {
     const me = await client.getMe()
     const replyMessage = await safeGetReplyMessage(msg)
+    const count = /^\d+$/.test(firstArg) ? Number(firstArg) : NaN
+
+    if (!replyMessage && (!Number.isSafeInteger(count) || count <= 0)) {
+      await msg.edit({ text: html(help_text) })
+      return
+    }
 
     await client.deleteMessagesById(msg.chat.id, [msg.id], { revoke: true }).catch(() => undefined)
 
@@ -253,13 +282,15 @@ const dme = async (msg: MessageContext): Promise<void> => {
       return
     }
 
-    const count = Number.parseInt(firstArg, 10)
-    if (!Number.isSafeInteger(count) || count <= 0) return
-
     const result = await streamSearchAndProcess(client, msg.chat.id, me.id, count)
     console.log(`[dme] Count complete: deleted ${result.processedCount}, edited ${result.editedCount}`)
   } catch (error: unknown) {
     console.error('[dme] Execution failed:', error)
+    // The command message may already be deleted, so editing it cannot report
+    // the failure. Explicit entities keep host HTML coercion away from errors.
+    await client.sendText(msg.chat.id, { text: `❌ DME 删除失败，操作已停止：${getErrorMessage(error).slice(0, 500)}`, entities: [] }).catch((reportError: unknown) => {
+      console.error('[dme] Failed to report error:', reportError)
+    })
   }
 }
 
